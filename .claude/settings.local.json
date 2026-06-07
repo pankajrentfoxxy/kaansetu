@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pandoc \"C:\\\\Users\\\\bibha\\\\Downloads\\\\kaamsetu\\\\KaamSetu_PRD.docx\" -o \"C:\\\\Users\\\\bibha\\\\Downloads\\\\kaamsetu\\\\KaamSetu_PRD.md\")",
+      "PowerShell(python \"C:\\\\Users\\\\bibha\\\\AppData\\\\Roaming\\\\Claude\\\\local-agent-mode-sessions\\\\skills-plugin\\\\72114356-f814-4182-a9b7-de39b19abb18\\\\b4892761-b581-475e-bf06-ab1050dadf0e\\\\skills\\\\docx\\\\scripts\\\\office\\\\unpack.py\" \"C:\\\\Users\\\\bibha\\\\Downloads\\\\kaamsetu\\\\KaamSetu_PRD.docx\" \"C:\\\\Users\\\\bibha\\\\Downloads\\\\kaamsetu\\\\prd_unpacked\" 2>&1)",
+      "PowerShell(Get-ChildItem -Recurse \"C:\\\\Users\\\\bibha\\\\Downloads\\\\kaamsetu\" -File | Where-Object { $_.Name -ne \"KaamSetu_PRD.docx\" -and $_.Name -ne \"KaamSetu_Claude_Code_Prompt.md\" } | Select-Object @{N='Path';E={$_.FullName.Replace\\(\"C:\\\\Users\\\\bibha\\\\Downloads\\\\kaamsetu\\\\\",\"\"\\)}} | Sort-Object Path | Format-Table -AutoSize)"
+    ]
+  }
+}

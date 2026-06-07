@@ -1,0 +1,20 @@
+{
+  "name": "kaamsetu",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:api": "cd packages/api && npm run dev",
+    "dev:admin": "cd apps/admin && npm run dev",
+    "dev:mobile": "cd apps/mobile && npm run start",
+    "db:migrate": "cd packages/database && npm run migrate:dev",
+    "db:generate": "cd packages/database && npm run generate",
+    "db:studio": "cd packages/database && npm run studio",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "install:all": "npm install && cd packages/api && npm install && cd ../../apps/mobile && npm install && cd ../admin && npm install"
+  }
+}

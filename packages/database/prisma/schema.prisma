@@ -1,0 +1,453 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── AUTH ────────────────────────────────────────────────────────────────────
+
+model User {
+  id              String   @id @default(uuid())
+  mobile          String   @unique
+  mobile_verified Boolean  @default(false)
+  role            UserRole @default(WORKER)
+  fcm_token       String?
+  is_active       Boolean  @default(true)
+  deleted_at      DateTime?
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  otp_sessions OtpSession[]
+  worker       Worker?
+  employer     Employer?
+  admin        Admin?
+}
+
+enum UserRole {
+  WORKER
+  EMPLOYER
+  ADMIN
+}
+
+model OtpSession {
+  id         String   @id @default(uuid())
+  user_id    String
+  otp_hash   String
+  mobile     String
+  purpose    String
+  expires_at DateTime
+  used       Boolean  @default(false)
+  attempts   Int      @default(0)
+  created_at DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [id])
+}
+
+model RefreshToken {
+  id         String   @id @default(uuid())
+  user_id    String
+  token_hash String   @unique
+  expires_at DateTime
+  revoked    Boolean  @default(false)
+  created_at DateTime @default(now())
+}
+
+// ─── WORKER ──────────────────────────────────────────────────────────────────
+
+model Worker {
+  id                String     @id @default(uuid())
+  user_id           String     @unique
+  full_name         String     @db.VarChar(200)
+  father_name       String?    @db.VarChar(200)
+  dob               DateTime?
+  gender            String?    @db.Char(1)
+  education_level   String?    @db.VarChar(50)
+  profile_photo_url String?
+  profile_score     Int        @default(0)
+  is_open_to_work   Boolean    @default(true)
+  is_pan_india      Boolean    @default(false)
+  is_live_in_ok     Boolean    @default(false)
+  kyc_status        KycStatus  @default(PENDING)
+  blocked_at        DateTime?
+  block_reason      String?
+  language          String     @default("hi")
+  consent_given_at  DateTime?
+  consent_ip        String?
+  deleted_at        DateTime?
+  created_at        DateTime   @default(now())
+  updated_at        DateTime   @updatedAt
+
+  user              User               @relation(fields: [user_id], references: [id])
+  skills            WorkerSkill[]
+  work_history      WorkHistory[]
+  location          WorkerLocation?
+  documents         WorkerDocument?
+  verifications     WorkerVerification[]
+  background_checks BackgroundCheck[]
+  blocks            WorkerBlock[]
+  matches           Match[]
+  shortlists        Shortlist[]
+  hires             Hire[]
+  notifications     Notification[]
+}
+
+enum KycStatus {
+  PENDING
+  AADHAAR_DONE
+  PAN_DONE
+  SELFIE_DONE
+  BGC_INITIATED
+  FULLY_VERIFIED
+  BLOCKED
+  SUSPENDED
+}
+
+model WorkerSkill {
+  id               String   @id @default(uuid())
+  worker_id        String
+  skill_type       String   @db.VarChar(50)
+  specialisation   String?
+  experience_years Int      @default(0)
+  licence_number   String?
+  is_primary       Boolean  @default(false)
+  created_at       DateTime @default(now())
+
+  worker Worker @relation(fields: [worker_id], references: [id])
+}
+
+model WorkHistory {
+  id               String    @id @default(uuid())
+  worker_id        String
+  employer_name    String    @db.VarChar(200)
+  role             String    @db.VarChar(100)
+  from_date        DateTime
+  to_date          DateTime?
+  is_current       Boolean   @default(false)
+  reference_name   String?
+  reference_mobile String?
+  leave_reason     String?
+  created_at       DateTime  @default(now())
+
+  worker Worker @relation(fields: [worker_id], references: [id])
+}
+
+model WorkerLocation {
+  id               String    @id @default(uuid())
+  worker_id        String    @unique
+  current_address  String?
+  city             String?
+  state            String?
+  pincode          String?   @db.VarChar(10)
+  latitude         Decimal?  @db.Decimal(10, 8)
+  longitude        Decimal?  @db.Decimal(11, 8)
+  preferred_cities String[]
+  full_address     String?
+  aadhaar_district String?
+  aadhaar_state    String?
+  created_at       DateTime  @default(now())
+  updated_at       DateTime  @updatedAt
+
+  worker Worker @relation(fields: [worker_id], references: [id])
+}
+
+model WorkerDocument {
+  id                  String   @id @default(uuid())
+  worker_id           String   @unique
+  masked_aadhaar      String?  @db.VarChar(20)
+  aadhaar_xml_url     String?
+  pan_number          String?  @db.VarChar(200)
+  selfie_url          String?
+  licence_url         String?
+  clearance_doc_url   String?
+  digilocker_client_id String?
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  worker Worker @relation(fields: [worker_id], references: [id])
+}
+
+model WorkerVerification {
+  id           String             @id @default(uuid())
+  worker_id    String
+  check_type   VerificationType
+  status       VerificationStatus @default(PENDING)
+  verified_at  DateTime?
+  response_ref String?
+  notes        String?
+  created_at   DateTime           @default(now())
+
+  worker Worker @relation(fields: [worker_id], references: [id])
+}
+
+enum VerificationType {
+  AADHAAR
+  PAN
+  SELFIE
+  ADDRESS
+  CRIMINAL
+  LICENCE
+}
+
+enum VerificationStatus {
+  PENDING
+  IN_PROGRESS
+  VERIFIED
+  FAILED
+  SKIPPED
+}
+
+model BackgroundCheck {
+  id                String    @id @default(uuid())
+  worker_id         String
+  check_type        BgcType   @default(ONBOARDING)
+  authbridge_ref_id String?
+  status            BgcStatus @default(INITIATED)
+  cases_found       Boolean   @default(false)
+  case_details      Json?
+  report_url        String?
+  initiated_at      DateTime  @default(now())
+  completed_at      DateTime?
+  next_check_due    DateTime?
+
+  worker Worker @relation(fields: [worker_id], references: [id])
+}
+
+enum BgcType {
+  ONBOARDING
+  PERIODIC
+  REINSTATEMENT
+  MANUAL
+}
+
+enum BgcStatus {
+  INITIATED
+  PENDING
+  CLEAR
+  FLAGGED
+  ERROR
+}
+
+model WorkerBlock {
+  id                 String    @id @default(uuid())
+  worker_id          String
+  reason             String
+  case_type          String?
+  case_district      String?
+  case_date          DateTime?
+  bgc_check_id       String?
+  blocked_by         String    @default("SYSTEM")
+  blocked_at         DateTime  @default(now())
+  reinstated_at      DateTime?
+  reinstated_by      String?
+  employers_notified Int       @default(0)
+
+  worker Worker @relation(fields: [worker_id], references: [id])
+}
+
+// ─── EMPLOYER ────────────────────────────────────────────────────────────────
+
+model Employer {
+  id                 String            @id @default(uuid())
+  user_id            String            @unique
+  company_name       String            @db.VarChar(200)
+  entity_type        String            @db.VarChar(30)
+  gst_number         String?           @db.VarChar(20)
+  pan_number         String?           @db.VarChar(20)
+  tan_number         String?           @db.VarChar(20)
+  cin_number         String?           @db.VarChar(25)
+  registered_address String?
+  city               String?
+  state              String?
+  pincode            String?           @db.VarChar(10)
+  contact_name       String?
+  contact_mobile     String?
+  kyc_status         EmployerKycStatus @default(PENDING)
+  is_active          Boolean           @default(true)
+  deleted_at         DateTime?
+  created_at         DateTime          @default(now())
+  updated_at         DateTime          @updatedAt
+
+  user          User                  @relation(fields: [user_id], references: [id])
+  verifications EmployerVerification[]
+  requirements  Requirement[]
+  shortlists    Shortlist[]
+  hires         Hire[]
+  case_alerts   CaseAlert[]
+  notifications Notification[]
+}
+
+enum EmployerKycStatus {
+  PENDING
+  GST_VERIFIED
+  PAN_VERIFIED
+  FULLY_VERIFIED
+  REJECTED
+}
+
+model EmployerVerification {
+  id          String             @id @default(uuid())
+  employer_id String
+  check_type  String
+  status      VerificationStatus @default(PENDING)
+  verified_at DateTime?
+  notes       String?
+  created_at  DateTime           @default(now())
+
+  employer Employer @relation(fields: [employer_id], references: [id])
+}
+
+// ─── REQUIREMENTS & MATCHING ─────────────────────────────────────────────────
+
+model Requirement {
+  id                   String            @id @default(uuid())
+  employer_id          String
+  job_type             String            @db.VarChar(50)
+  custom_job_type      String?
+  openings             Int               @default(1)
+  salary_min           Int
+  salary_max           Int
+  city                 String?
+  state                String?
+  pincode              String?
+  latitude             Decimal?          @db.Decimal(10, 8)
+  longitude            Decimal?          @db.Decimal(11, 8)
+  is_pan_india         Boolean           @default(false)
+  is_live_in_required  Boolean           @default(false)
+  min_experience_years Int               @default(0)
+  start_date           DateTime?
+  status               RequirementStatus @default(ACTIVE)
+  created_at           DateTime          @default(now())
+  updated_at           DateTime          @updatedAt
+  expires_at           DateTime
+
+  employer   Employer    @relation(fields: [employer_id], references: [id])
+  matches    Match[]
+  shortlists Shortlist[]
+  hires      Hire[]
+}
+
+enum RequirementStatus {
+  ACTIVE
+  PAUSED
+  CLOSED
+  FULFILLED
+}
+
+model Match {
+  id              String      @id @default(uuid())
+  requirement_id  String
+  worker_id       String
+  match_score     Int
+  score_breakdown Json
+  distance_km     Decimal?    @db.Decimal(6, 2)
+  created_at      DateTime    @default(now())
+
+  requirement Requirement @relation(fields: [requirement_id], references: [id])
+  worker      Worker      @relation(fields: [worker_id], references: [id])
+
+  @@unique([requirement_id, worker_id])
+}
+
+model Shortlist {
+  id             String   @id @default(uuid())
+  employer_id    String
+  worker_id      String
+  requirement_id String
+  notes          String?
+  created_at     DateTime @default(now())
+
+  employer    Employer    @relation(fields: [employer_id], references: [id])
+  worker      Worker      @relation(fields: [worker_id], references: [id])
+  requirement Requirement @relation(fields: [requirement_id], references: [id])
+
+  @@unique([employer_id, worker_id, requirement_id])
+}
+
+model Hire {
+  id                String     @id @default(uuid())
+  employer_id       String
+  worker_id         String
+  requirement_id    String
+  offer_salary      Int
+  start_date        DateTime
+  offer_letter_url  String?
+  esign_worker_at   DateTime?
+  esign_employer_at DateTime?
+  status            HireStatus @default(OFFER_SENT)
+  created_at        DateTime   @default(now())
+  updated_at        DateTime   @updatedAt
+
+  employer    Employer    @relation(fields: [employer_id], references: [id])
+  worker      Worker      @relation(fields: [worker_id], references: [id])
+  requirement Requirement @relation(fields: [requirement_id], references: [id])
+}
+
+enum HireStatus {
+  OFFER_SENT
+  WORKER_SIGNED
+  EMPLOYER_SIGNED
+  ACTIVE
+  TERMINATED
+}
+
+// ─── CASE ALERTS ─────────────────────────────────────────────────────────────
+
+model CaseAlert {
+  id                String    @id @default(uuid())
+  worker_id         String
+  employer_id       String
+  bgc_check_id      String
+  case_type         String
+  case_district     String
+  case_date         DateTime?
+  notified_at       DateTime  @default(now())
+  employer_action   String?
+  employer_acted_at DateTime?
+
+  employer Employer @relation(fields: [employer_id], references: [id])
+}
+
+// ─── NOTIFICATIONS ───────────────────────────────────────────────────────────
+
+model Notification {
+  id             String    @id @default(uuid())
+  type           String
+  worker_id      String?
+  employer_id    String?
+  title          String
+  body           String
+  data           Json?
+  fcm_message_id String?
+  delivered_at   DateTime?
+  created_at     DateTime  @default(now())
+
+  worker   Worker?   @relation(fields: [worker_id], references: [id])
+  employer Employer? @relation(fields: [employer_id], references: [id])
+}
+
+// ─── ADMIN ───────────────────────────────────────────────────────────────────
+
+model Admin {
+  id         String   @id @default(uuid())
+  user_id    String   @unique
+  name       String
+  email      String   @unique
+  created_at DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [id])
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  actor_id    String
+  actor_role  String
+  action      String
+  target_id   String?
+  target_type String?
+  details     Json?
+  ip_address  String?
+  created_at  DateTime @default(now())
+}
