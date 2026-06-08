@@ -1,15 +1,46 @@
 import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, RefreshControl, TouchableOpacity, Alert } from 'react-native';
+import {
+  View, Text, StyleSheet, SafeAreaView, ScrollView,
+  RefreshControl, TouchableOpacity, Alert,
+} from 'react-native';
 import { useDispatch } from 'react-redux';
-import { useGetEmployerProfileQuery, useGetRequirementsQuery, useGetCaseAlertsQuery } from '../../store/api/employerApi';
-import { RequirementCard } from '../../components/employer/RequirementCard';
-import { Button } from '../../components/common/Button';
-import { EmptyState } from '../../components/common/EmptyState';
+import {
+  useGetEmployerProfileQuery,
+  useGetRequirementsQuery,
+  useGetCaseAlertsQuery,
+} from '../../store/api/employerApi';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
+import { EmptyState } from '../../components/common/EmptyState';
 import { Colors, Spacing, Typography } from '../../theme';
 import { SecureStore } from '../../utils/storage';
 import { logout } from '../../store/authSlice';
 import { baseApi } from '../../store/api/baseApi';
+
+const JOB_ICONS: Record<string, string> = {
+  driver: '🚗',
+  security_guard: '🛡️',
+  cook: '🍳',
+  housekeeper: '🏠',
+  delivery: '📦',
+  electrician: '🔧',
+  plumber: '🔩',
+  peon: '📋',
+  sweeper: '🧹',
+  helper: '👤',
+};
+
+function formatSalary(n: number) {
+  if (n >= 1000) return `₹${(n / 1000).toFixed(0)}k`;
+  return `₹${n}`;
+}
+
+function getInitials(name: string) {
+  return (name || 'KS')
+    .split(' ')
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? '')
+    .join('');
+}
 
 export function EmployerDashboardScreen({ navigation }: any) {
   const dispatch = useDispatch();
@@ -21,12 +52,12 @@ export function EmployerDashboardScreen({ navigation }: any) {
 
   const handleLogout = () => {
     Alert.alert(
-      'Logout / लॉगआउट',
-      'Are you sure you want to logout?\nक्या आप लॉगआउट करना चाहते हैं?',
+      'लॉगआउट करें?',
+      'Logout from KaamSetu',
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: 'रद्द करें', style: 'cancel' },
         {
-          text: 'Logout',
+          text: 'हाँ, निकलें',
           style: 'destructive',
           onPress: async () => {
             await SecureStore.deleteItemAsync('access_token');
@@ -43,96 +74,305 @@ export function EmployerDashboardScreen({ navigation }: any) {
 
   const activeReqs = requirements.filter((r: any) => r.status === 'ACTIVE');
   const totalMatches = requirements.reduce((sum: number, r: any) => sum + (r._count?.matches ?? 0), 0);
-  const totalHires = 0;
+
+  // KYC check
+  const verifications: any[] = employer?.verifications ?? [];
+  const isVerified = verifications.some((v: any) => v.status === 'VERIFIED');
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView
-        contentContainerStyle={styles.inner}
-        refreshControl={<RefreshControl refreshing={false} onRefresh={() => { refetchEmp(); refetchReq(); }} />}
+        contentContainerStyle={styles.scroll}
+        refreshControl={<RefreshControl refreshing={false} onRefresh={() => { refetchEmp(); refetchReq(); }} tintColor={Colors.primary} />}
+        showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.company}>{employer?.company_name ?? 'Your Company'}</Text>
-            <Text style={styles.city}>📍 {employer?.city ?? 'Add city'}</Text>
-          </View>
-          <View style={styles.headerActions}>
-            <TouchableOpacity style={styles.bell} onPress={() => navigation.navigate('CaseAlert')}>
-              <Text style={styles.bellIcon}>🔔</Text>
+
+        {/* ── Hero Card ── */}
+        <View style={styles.heroCard}>
+          <View style={styles.heroTop}>
+            <View style={styles.companyAvatar}>
+              <Text style={styles.companyAvatarText}>{getInitials(employer?.company_name ?? 'Co')}</Text>
+            </View>
+
+            <View style={styles.heroInfo}>
+              <Text style={styles.companyName} numberOfLines={1}>
+                {employer?.company_name || 'Your Company'}
+              </Text>
+              <Text style={styles.companyType}>
+                {employer?.entity_type?.replace(/_/g, ' ') ?? 'Business'}
+              </Text>
+              <Text style={styles.companyCity}>
+                📍 {employer?.city ?? 'Add city'}
+              </Text>
+            </View>
+
+            <View style={styles.headerRight}>
               {unreadAlerts > 0 && (
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>{unreadAlerts}</Text>
-                </View>
+                <TouchableOpacity style={styles.alertBtn} onPress={() => navigation.navigate('CaseAlert')}>
+                  <Text style={styles.alertBtnText}>🔔 {unreadAlerts}</Text>
+                </TouchableOpacity>
               )}
+              <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Text style={styles.logoutIcon}>⎋</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Verification status */}
+          {!isVerified ? (
+            <TouchableOpacity
+              style={styles.verifyBanner}
+              onPress={() => navigation.navigate('EmployerVerification')}
+            >
+              <Text style={styles.verifyBannerText}>⚠️ Business verification pending — Tap to verify</Text>
+              <Text style={styles.verifyBannerArrow}>→</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
-              <Text style={styles.logoutText}>🚪 Logout</Text>
-            </TouchableOpacity>
+          ) : (
+            <View style={styles.verifiedBadge}>
+              <Text style={styles.verifiedBadgeText}>✅ Business Verified</Text>
+            </View>
+          )}
+        </View>
+
+        {/* ── Stats Grid ── */}
+        <View style={styles.statsGrid}>
+          <View style={[styles.statCard, { backgroundColor: '#EBF5FF' }]}>
+            <Text style={styles.statIcon}>📋</Text>
+            <Text style={[styles.statNum, { color: Colors.primary }]}>{activeReqs.length}</Text>
+            <Text style={styles.statLabel}>Active Posts</Text>
+          </View>
+          <View style={[styles.statCard, { backgroundColor: '#FFF7ED' }]}>
+            <Text style={styles.statIcon}>👥</Text>
+            <Text style={[styles.statNum, { color: '#D97706' }]}>{totalMatches}</Text>
+            <Text style={styles.statLabel}>Total Matches</Text>
+          </View>
+          <View style={[styles.statCard, { backgroundColor: '#F0FFF4' }]}>
+            <Text style={styles.statIcon}>✅</Text>
+            <Text style={[styles.statNum, { color: '#16A34A' }]}>{requirements.length}</Text>
+            <Text style={styles.statLabel}>Total Posts</Text>
           </View>
         </View>
 
-        {/* Metrics */}
-        <View style={styles.metricsRow}>
-          <View style={styles.metric}>
-            <Text style={styles.metricNum}>{activeReqs.length}</Text>
-            <Text style={styles.metricLabel}>Active</Text>
-          </View>
-          <View style={styles.metric}>
-            <Text style={styles.metricNum}>{totalMatches}</Text>
-            <Text style={styles.metricLabel}>Matched</Text>
-          </View>
-          <View style={styles.metric}>
-            <Text style={styles.metricNum}>{totalHires}</Text>
-            <Text style={styles.metricLabel}>Hired</Text>
-          </View>
+        {/* ── Quick Actions ── */}
+        <View style={styles.quickActions}>
+          <TouchableOpacity
+            style={[styles.quickBtn, styles.quickBtnPrimary]}
+            onPress={() => navigation.navigate('PostRequirement')}
+          >
+            <Text style={styles.quickBtnIcon}>➕</Text>
+            <Text style={styles.quickBtnText}>Post Requirement</Text>
+            <Text style={styles.quickBtnSub}>नई ज़रूरत पोस्ट करें</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.quickBtn, styles.quickBtnSecondary]}
+            onPress={() => navigation.navigate('EmployerVerification')}
+          >
+            <Text style={styles.quickBtnIcon}>🔐</Text>
+            <Text style={[styles.quickBtnText, { color: Colors.primary }]}>Verification</Text>
+            <Text style={[styles.quickBtnSub, { color: Colors.textSecondary }]}>सत्यापन करें</Text>
+          </TouchableOpacity>
         </View>
 
-        <Button
-          title="+ Post New Requirement"
-          onPress={() => navigation.navigate('PostRequirement')}
-          style={styles.postBtn}
-        />
+        {/* ── Requirements ── */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>📋 Active Requirements</Text>
+          <Text style={styles.sectionSub}>आपकी सक्रिय ज़रूरतें</Text>
+        </View>
 
-        <Text style={styles.sectionTitle}>Active Requirements</Text>
-        {reqLoading ? <LoadingSpinner /> : requirements.length === 0 ? (
-          <EmptyState icon="📋" message="No requirements posted" subMessage="Post a requirement to find verified workers" />
+        {reqLoading ? (
+          <LoadingSpinner />
+        ) : requirements.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyIcon}>📭</Text>
+            <Text style={styles.emptyTitle}>No requirements posted</Text>
+            <Text style={styles.emptyText}>Post your first requirement to find verified workers</Text>
+            <TouchableOpacity
+              style={styles.emptyBtn}
+              onPress={() => navigation.navigate('PostRequirement')}
+            >
+              <Text style={styles.emptyBtnText}>+ Post Requirement</Text>
+            </TouchableOpacity>
+          </View>
         ) : (
           requirements.map((req: any) => (
-            <RequirementCard
+            <TouchableOpacity
               key={req.id}
-              jobType={req.job_type}
-              city={req.city}
-              salaryMin={req.salary_min}
-              salaryMax={req.salary_max}
-              matchCount={req._count?.matches ?? 0}
-              status={req.status}
+              style={styles.reqCard}
               onPress={() => navigation.navigate('MatchedProfiles', { requirementId: req.id })}
-            />
+              activeOpacity={0.85}
+            >
+              <View style={styles.reqCardLeft}>
+                <View style={styles.reqIconCircle}>
+                  <Text style={styles.reqIconText}>{JOB_ICONS[req.job_type] ?? '💼'}</Text>
+                </View>
+                <View style={styles.reqInfo}>
+                  <Text style={styles.reqTitle}>{req.job_type?.replace(/_/g, ' ')?.toUpperCase()}</Text>
+                  <Text style={styles.reqLocation}>📍 {req.city ?? 'Pan India'}</Text>
+                  <Text style={styles.reqSalary}>
+                    {formatSalary(req.salary_min ?? 0)} – {formatSalary(req.salary_max ?? 0)}/mo
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.reqRight}>
+                <View style={[styles.reqStatus, req.status === 'ACTIVE' ? styles.reqStatusActive : styles.reqStatusInactive]}>
+                  <Text style={[styles.reqStatusText, req.status === 'ACTIVE' ? { color: '#166534' } : { color: Colors.textSecondary }]}>
+                    {req.status}
+                  </Text>
+                </View>
+                <Text style={styles.reqMatches}>{req._count?.matches ?? 0} matches</Text>
+                <Text style={styles.reqArrow}>→</Text>
+              </View>
+            </TouchableOpacity>
           ))
         )}
+
+        {/* ── Case Alerts ── */}
+        {unreadAlerts > 0 && (
+          <TouchableOpacity
+            style={styles.alertCard}
+            onPress={() => navigation.navigate('CaseAlert')}
+          >
+            <Text style={styles.alertCardIcon}>⚠️</Text>
+            <View style={styles.alertCardInfo}>
+              <Text style={styles.alertCardTitle}>{unreadAlerts} Case Alert{unreadAlerts > 1 ? 's' : ''}</Text>
+              <Text style={styles.alertCardSub}>Worker flagged — action required</Text>
+            </View>
+            <Text style={styles.alertCardArrow}>→</Text>
+          </TouchableOpacity>
+        )}
+
+        <View style={{ height: 40 }} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  inner: { padding: Spacing.lg },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.lg },
-  company: { ...Typography.h2, color: Colors.textPrimary, fontWeight: '700' },
-  city: { ...Typography.caption, color: Colors.textSecondary },
-  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  bell: { position: 'relative', padding: Spacing.sm },
-  bellIcon: { fontSize: 26 },
-  badge: { position: 'absolute', top: 2, right: 2, backgroundColor: Colors.danger, borderRadius: 8, minWidth: 16, height: 16, alignItems: 'center', justifyContent: 'center' },
-  badgeText: { color: '#fff', fontSize: 10, fontWeight: '700' },
-  logoutBtn: { paddingVertical: 4, paddingHorizontal: 8, backgroundColor: Colors.dangerLight, borderRadius: 6 },
-  logoutText: { fontSize: 11, color: Colors.danger, fontWeight: '600' },
-  metricsRow: { flexDirection: 'row', justifyContent: 'space-around', backgroundColor: Colors.surface, borderRadius: 12, padding: Spacing.lg, marginBottom: Spacing.lg },
-  metric: { alignItems: 'center' },
-  metricNum: { fontSize: 26, fontWeight: '700', color: Colors.primary },
-  metricLabel: { ...Typography.caption, color: Colors.textSecondary },
-  postBtn: { marginBottom: Spacing.xl },
-  sectionTitle: { ...Typography.h2, color: Colors.textPrimary, marginBottom: Spacing.md },
+  container: { flex: 1, backgroundColor: '#F0F4F8' },
+  scroll: { padding: 16, paddingBottom: 32 },
+
+  // Hero
+  heroCard: {
+    backgroundColor: '#1A56A0',
+    borderRadius: 20, padding: 20, marginBottom: 16,
+    shadowColor: '#1A56A0', shadowOpacity: 0.3, shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 }, elevation: 6,
+  },
+  heroTop: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 },
+  companyAvatar: {
+    width: 56, height: 56, borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: 'rgba(255,255,255,0.4)',
+  },
+  companyAvatarText: { color: '#fff', fontSize: 22, fontWeight: '800' },
+  heroInfo: { flex: 1 },
+  companyName: { color: '#fff', fontSize: 18, fontWeight: '700' },
+  companyType: { color: 'rgba(255,255,255,0.7)', fontSize: 12, textTransform: 'capitalize', marginTop: 1 },
+  companyCity: { color: 'rgba(255,255,255,0.8)', fontSize: 13, marginTop: 2 },
+  headerRight: { alignItems: 'flex-end', gap: 8 },
+  alertBtn: {
+    backgroundColor: '#EF4444', borderRadius: 20,
+    paddingHorizontal: 10, paddingVertical: 4,
+  },
+  alertBtnText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  logoutBtn: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  logoutIcon: { color: '#fff', fontSize: 18 },
+
+  // Verify banner
+  verifyBanner: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8,
+  },
+  verifyBannerText: { flex: 1, color: '#FDE68A', fontSize: 13, fontWeight: '600' },
+  verifyBannerArrow: { color: '#FDE68A', fontSize: 18, fontWeight: '700' },
+  verifiedBadge: {
+    backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 10,
+    paddingHorizontal: 12, paddingVertical: 8, alignSelf: 'flex-start',
+  },
+  verifiedBadgeText: { color: '#A7F3D0', fontSize: 13, fontWeight: '700' },
+
+  // Stats
+  statsGrid: { flexDirection: 'row', gap: 10, marginBottom: 16 },
+  statCard: {
+    flex: 1, borderRadius: 14, padding: 14, alignItems: 'center',
+    shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 6, elevation: 2,
+  },
+  statIcon: { fontSize: 22, marginBottom: 4 },
+  statNum: { fontSize: 26, fontWeight: '800' },
+  statLabel: { fontSize: 12, color: Colors.textSecondary, fontWeight: '500', marginTop: 2, textAlign: 'center' },
+
+  // Quick Actions
+  quickActions: { flexDirection: 'row', gap: 10, marginBottom: 20 },
+  quickBtn: {
+    flex: 1, borderRadius: 14, padding: 14,
+    shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 6, elevation: 2,
+  },
+  quickBtnPrimary: { backgroundColor: Colors.primary },
+  quickBtnSecondary: { backgroundColor: '#fff', borderWidth: 1.5, borderColor: Colors.primaryLight },
+  quickBtnIcon: { fontSize: 22, marginBottom: 6 },
+  quickBtnText: { fontSize: 15, fontWeight: '700', color: '#fff', marginBottom: 2 },
+  quickBtnSub: { fontSize: 12, color: 'rgba(255,255,255,0.75)' },
+
+  // Section
+  section: { marginBottom: 12 },
+  sectionTitle: { fontSize: 20, fontWeight: '700', color: '#1A1A2E' },
+  sectionSub: { fontSize: 13, color: Colors.textSecondary, marginTop: 2 },
+
+  // Empty
+  emptyCard: {
+    backgroundColor: '#fff', borderRadius: 16, padding: 28,
+    alignItems: 'center', borderWidth: 1.5, borderColor: Colors.border, marginBottom: 16,
+  },
+  emptyIcon: { fontSize: 48, marginBottom: 12 },
+  emptyTitle: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary, marginBottom: 6 },
+  emptyText: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', marginBottom: 16 },
+  emptyBtn: {
+    backgroundColor: Colors.primary, borderRadius: 10,
+    paddingVertical: 12, paddingHorizontal: 24,
+  },
+  emptyBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+
+  // Requirement Card
+  reqCard: {
+    backgroundColor: '#fff', borderRadius: 14, padding: 14, marginBottom: 10,
+    flexDirection: 'row', alignItems: 'center',
+    borderWidth: 1, borderColor: '#E8EEF4',
+    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, elevation: 3,
+  },
+  reqCardLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+  reqIconCircle: {
+    width: 48, height: 48, borderRadius: 12,
+    backgroundColor: Colors.primaryLight, alignItems: 'center', justifyContent: 'center',
+  },
+  reqIconText: { fontSize: 24 },
+  reqInfo: { flex: 1 },
+  reqTitle: { fontSize: 13, fontWeight: '800', color: Colors.textPrimary, letterSpacing: 0.3 },
+  reqLocation: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
+  reqSalary: { fontSize: 13, fontWeight: '700', color: Colors.primary, marginTop: 2 },
+  reqRight: { alignItems: 'flex-end', gap: 4 },
+  reqStatus: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 },
+  reqStatusActive: { backgroundColor: '#DCFCE7' },
+  reqStatusInactive: { backgroundColor: '#F1F5F9' },
+  reqStatusText: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase' },
+  reqMatches: { fontSize: 12, color: Colors.textSecondary },
+  reqArrow: { fontSize: 16, color: Colors.primary, fontWeight: '700' },
+
+  // Alert
+  alertCard: {
+    backgroundColor: '#FFF7ED', borderRadius: 14, padding: 16, marginBottom: 12,
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    borderWidth: 1.5, borderColor: '#FCD34D',
+  },
+  alertCardIcon: { fontSize: 28 },
+  alertCardInfo: { flex: 1 },
+  alertCardTitle: { fontSize: 15, fontWeight: '700', color: '#92400E' },
+  alertCardSub: { fontSize: 12, color: '#B45309', marginTop: 2 },
+  alertCardArrow: { fontSize: 18, color: '#D97706', fontWeight: '700' },
 });

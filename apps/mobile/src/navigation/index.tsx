@@ -1,4 +1,5 @@
 import React from 'react';
+import { View, Text, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -32,21 +33,92 @@ import { HireConfirmedScreen } from '../screens/employer/HireConfirmedScreen';
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
+function TabIcon({ emoji, label, focused }: { emoji: string; label: string; focused: boolean }) {
+  return (
+    <View style={tabStyles.iconWrap}>
+      <Text style={tabStyles.emoji}>{emoji}</Text>
+      <Text style={[tabStyles.label, focused && tabStyles.labelActive]}>{label}</Text>
+    </View>
+  );
+}
+
+const tabStyles = StyleSheet.create({
+  iconWrap: { alignItems: 'center', justifyContent: 'center', paddingTop: 4 },
+  emoji: { fontSize: 20 },
+  label: { fontSize: 10, color: Colors.textTertiary, marginTop: 2, fontWeight: '500' },
+  labelActive: { color: Colors.primary, fontWeight: '700' },
+});
+
+const TAB_BAR_STYLE = {
+  height: 64,
+  paddingBottom: 8,
+  paddingTop: 4,
+  backgroundColor: '#fff',
+  borderTopWidth: 1,
+  borderTopColor: '#E2E8F0',
+  elevation: 8,
+  shadowColor: '#000',
+  shadowOpacity: 0.08,
+  shadowRadius: 8,
+};
+
 function WorkerTabs() {
   return (
-    <Tab.Navigator screenOptions={{ headerShown: false, tabBarActiveTintColor: Colors.primary, tabBarInactiveTintColor: Colors.textTertiary }}>
-      <Tab.Screen name="Home" component={WorkerDashboardScreen} options={{ tabBarLabel: '🏠 Home' }} />
-      <Tab.Screen name="KYC" component={KycVerificationScreen} options={{ tabBarLabel: '✅ KYC' }} />
+    <Tab.Navigator
+      screenOptions={{
+        headerShown: false,
+        tabBarStyle: TAB_BAR_STYLE,
+        tabBarShowLabel: false,
+      }}
+    >
+      <Tab.Screen
+        name="Home"
+        component={WorkerDashboardScreen}
+        options={{
+          tabBarIcon: ({ focused }) => <TabIcon emoji="🏠" label="Home" focused={focused} />,
+        }}
+      />
+      <Tab.Screen
+        name="KYC"
+        component={KycVerificationScreen}
+        options={{
+          tabBarIcon: ({ focused }) => <TabIcon emoji="✅" label="Verify" focused={focused} />,
+        }}
+      />
     </Tab.Navigator>
   );
 }
 
 function EmployerTabs() {
   return (
-    <Tab.Navigator screenOptions={{ headerShown: false, tabBarActiveTintColor: Colors.primary, tabBarInactiveTintColor: Colors.textTertiary }}>
-      <Tab.Screen name="Home" component={EmployerDashboardScreen} options={{ tabBarLabel: '🏠 Home' }} />
-      <Tab.Screen name="Post" component={PostRequirementScreen} options={{ tabBarLabel: '➕ Post Job' }} />
-      <Tab.Screen name="Verify" component={EmployerVerificationScreen} options={{ tabBarLabel: '✅ Verify' }} />
+    <Tab.Navigator
+      screenOptions={{
+        headerShown: false,
+        tabBarStyle: TAB_BAR_STYLE,
+        tabBarShowLabel: false,
+      }}
+    >
+      <Tab.Screen
+        name="Home"
+        component={EmployerDashboardScreen}
+        options={{
+          tabBarIcon: ({ focused }) => <TabIcon emoji="🏠" label="Home" focused={focused} />,
+        }}
+      />
+      <Tab.Screen
+        name="Post"
+        component={PostRequirementScreen}
+        options={{
+          tabBarIcon: ({ focused }) => <TabIcon emoji="➕" label="Post" focused={focused} />,
+        }}
+      />
+      <Tab.Screen
+        name="Verify"
+        component={EmployerVerificationScreen}
+        options={{
+          tabBarIcon: ({ focused }) => <TabIcon emoji="🔐" label="Verify" focused={focused} />,
+        }}
+      />
     </Tab.Navigator>
   );
 }
