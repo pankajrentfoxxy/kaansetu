@@ -15,6 +15,7 @@ import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { Colors, Spacing, Typography } from '../../theme';
 import { SecureStore } from '../../utils/storage';
 import { logout } from '../../store/authSlice';
+import { baseApi } from '../../store/api/baseApi';
 
 export function WorkerDashboardScreen({ navigation }: any) {
   const dispatch = useDispatch();
@@ -46,6 +47,7 @@ export function WorkerDashboardScreen({ navigation }: any) {
           onPress: async () => {
             await SecureStore.deleteItemAsync('access_token');
             await SecureStore.deleteItemAsync('refresh_token');
+            dispatch(baseApi.util.resetApiState());
             dispatch(logout());
           },
         },

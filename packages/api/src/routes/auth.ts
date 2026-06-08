@@ -64,7 +64,7 @@ authRoutes.post('/verify-otp', loginRateLimit, validate(VerifyOtpSchema), async 
       await prisma.worker.create({ data: { user_id: user.id, full_name: '' } });
     }
     if (updatedRole === 'EMPLOYER' && !await prisma.employer.findUnique({ where: { user_id: user.id } })) {
-      await prisma.employer.create({ data: { user_id: user.id, company_name: '' } });
+      await prisma.employer.create({ data: { user_id: user.id, company_name: '', entity_type: 'INDIVIDUAL' } });
     }
 
     const accessToken = signAccessToken(user.id, updatedRole);
