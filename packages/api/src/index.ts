@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import { execSync } from 'child_process';
 import { errorHandler } from './middleware/errorHandler';
 import { authRoutes } from './routes/auth';
 import { workerRoutes } from './routes/worker';
@@ -12,6 +13,17 @@ import { adminRoutes } from './routes/admin';
 import { webhookRoutes } from './routes/webhooks';
 import { logger } from './utils/logger';
 import './jobs/scheduler';
+
+// Run DB migrations before starting server (Railway / production)
+if (process.env.NODE_ENV === 'production') {
+  try {
+    logger.info('Running database migrations...');
+    execSync('npx prisma migrate deploy', { stdio: 'inherit' });
+    logger.info('Migrations complete.');
+  } catch (e) {
+    logger.error('Migration failed — continuing anyway', e);
+  }
+}
 
 const app = express();
 
