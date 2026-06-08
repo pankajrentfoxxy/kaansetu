@@ -27,6 +27,10 @@
         "android.permission.RECORD_AUDIO"
       ]
     },
+    "ios": {
+      "bundleIdentifier": "com.kaamsetu.app",
+      "supportsTablet": false
+    },
     "web": {
       "bundler": "metro",
       "output": "single",
