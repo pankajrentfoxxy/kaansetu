@@ -244,3 +244,36 @@ employerRoutes.post('/case-alerts/:id/action', async (req: AuthRequest, res, nex
     res.json({ success: true });
   } catch (err) { next(err); }
 });
+
+// ── Mock KYC endpoints (dev/demo only) ──────────────────────────────────────
+employerRoutes.post('/kyc/mock-business', async (req: AuthRequest, res, next) => {
+  if (process.env.NODE_ENV === 'production' && process.env.ALLOW_DEV_OTP !== 'true') {
+    return res.status(403).json({ message: 'Not available in production' });
+  }
+  try {
+    const employer = await getEmployer(req.user!.id);
+    const existing = await prisma.employerVerification.findFirst({ where: { employer_id: employer.id, check_type: 'BUSINESS' } });
+    if (existing) {
+      await prisma.employerVerification.update({ where: { id: existing.id }, data: { status: 'VERIFIED', verified_at: new Date() } });
+    } else {
+      await prisma.employerVerification.create({ data: { employer_id: employer.id, check_type: 'BUSINESS', status: 'VERIFIED', verified_at: new Date() } });
+    }
+    res.json({ success: true, message: 'Mock business verified' });
+  } catch (err) { next(err); }
+});
+
+employerRoutes.post('/kyc/mock-pan', async (req: AuthRequest, res, next) => {
+  if (process.env.NODE_ENV === 'production' && process.env.ALLOW_DEV_OTP !== 'true') {
+    return res.status(403).json({ message: 'Not available in production' });
+  }
+  try {
+    const employer = await getEmployer(req.user!.id);
+    const existing = await prisma.employerVerification.findFirst({ where: { employer_id: employer.id, check_type: 'PAN' } });
+    if (existing) {
+      await prisma.employerVerification.update({ where: { id: existing.id }, data: { status: 'VERIFIED', verified_at: new Date() } });
+    } else {
+      await prisma.employerVerification.create({ data: { employer_id: employer.id, check_type: 'PAN', status: 'VERIFIED', verified_at: new Date() } });
+    }
+    res.json({ success: true, message: 'Mock PAN verified' });
+  } catch (err) { next(err); }
+});

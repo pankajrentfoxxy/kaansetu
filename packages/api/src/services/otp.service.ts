@@ -3,7 +3,9 @@ import { prisma } from '../config/database';
 import { smsService } from './sms.service';
 
 const DEV_OTP = '123456';
-const IS_DEV = process.env.NODE_ENV !== 'production';
+// IS_DEV is true when NODE_ENV is not production OR when ALLOW_DEV_OTP=true
+// Set ALLOW_DEV_OTP=true in Railway env to allow 123456 bypass without real SMS
+const IS_DEV = process.env.NODE_ENV !== 'production' || process.env.ALLOW_DEV_OTP === 'true';
 
 function generateOtp(): string {
   // In dev, always use 123456 so you can test without SMS

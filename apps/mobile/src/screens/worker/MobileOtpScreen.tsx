@@ -1,136 +1,157 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
-  View, Text, TextInput, StyleSheet, SafeAreaView,
-  TouchableOpacity, KeyboardAvoidingView, Platform,
+  View, Text, StyleSheet, SafeAreaView, TouchableOpacity,
+  KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState } from '../../store';
 import { SecureStore } from '../../utils/storage';
-import { useDispatch } from 'react-redux';
 import { setCredentials } from '../../store/authSlice';
-import { useSendOtpMutation, useVerifyOtpMutation } from '../../store/api/authApi';
+import { t } from '../../utils/i18n';
+import { Colors, Spacing, Typography } from '../../theme';
+import { Input } from '../../components/common/Input';
 import { Button } from '../../components/common/Button';
 import { AlertCard } from '../../components/common/AlertCard';
-import { Colors, Spacing, Typography } from '../../theme';
 
-export function MobileOtpScreen({ navigation, route }: any) {
-  const role = route.params?.role ?? 'WORKER';
-  const [mobile, setMobile] = useState('');
-  const [otpSent, setOtpSent] = useState(false);
-  const [otp, setOtp] = useState(['', '', '', '', '', '']);
-  const [countdown, setCountdown] = useState(0);
-  const [error, setError] = useState('');
-  const inputRefs = useRef<Array<TextInput | null>>([]);
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
+type Step = 'mobile' | 'otp' | 'role';
+
+export function MobileOtpScreen({ navigation }: any) {
+  const lang = useSelector((s: RootState) => s.auth.language);
   const dispatch = useDispatch();
 
-  const [sendOtp, { isLoading: sending }] = useSendOtpMutation();
-  const [verifyOtp, { isLoading: verifying }] = useVerifyOtpMutation();
+  const [step, setStep] = useState<Step>('mobile');
+  const [mobile, setMobile] = useState('');
+  const [otp, setOtp] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  useEffect(() => {
-    if (countdown <= 0) return;
-    const t = setTimeout(() => setCountdown((c) => c - 1), 1000);
-    return () => clearTimeout(t);
-  }, [countdown]);
-
-  const handleSendOtp = async () => {
-    if (!/^[6-9]\d{9}$/.test(mobile)) {
-      setError('Enter valid 10-digit mobile number');
-      return;
-    }
-    setError('');
-    try {
-      await sendOtp({ mobile }).unwrap();
-      setOtpSent(true);
-      setCountdown(30);
-    } catch {
-      setError('Failed to send OTP. Try again.');
-    }
+  const apiPost = async (path: string, body: object) => {
+    const res = await fetch(`${BASE_URL}/api/v1${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message ?? 'Request failed');
+    return data;
   };
 
-  const handleOtpChange = (val: string, idx: number) => {
-    const newOtp = [...otp];
-    newOtp[idx] = val.slice(-1);
-    setOtp(newOtp);
-    if (val && idx < 5) inputRefs.current[idx + 1]?.focus();
-    if (!val && idx > 0) inputRefs.current[idx - 1]?.focus();
+  const sendOtp = async () => {
+    if (mobile.length !== 10) { setError('10 अंकों का नंबर दर्ज करें / Enter 10-digit number'); return; }
+    setError(''); setLoading(true);
+    try {
+      await apiPost('/auth/send-otp', { mobile: `+91${mobile}` });
+      setStep('otp');
+    } catch (e: any) {
+      setError(e.message ?? 'OTP भेजने में विफल / Failed to send OTP');
+    } finally { setLoading(false); }
   };
 
-  const handleVerify = async () => {
-    const code = otp.join('');
-    if (code.length < 6) { setError('Enter 6-digit OTP'); return; }
-    setError('');
+  const verifyOtp = async () => {
+    if (otp.length !== 6) { setError('6 अंकों का OTP दर्ज करें'); return; }
+    setError(''); setLoading(true);
     try {
-      const result = await verifyOtp({ mobile, otp: code, role }).unwrap();
-      await SecureStore.setItemAsync('access_token', result.access_token);
-      await SecureStore.setItemAsync('refresh_token', result.refresh_token);
-      dispatch(setCredentials({ userId: result.user.id, role: result.user.role }));
-    } catch {
-      setError('Invalid OTP. Please try again.');
-    }
+      const data = await apiPost('/auth/verify-otp', { mobile: `+91${mobile}`, otp });
+      if (data.access_token) {
+        await SecureStore.setItemAsync('access_token', data.access_token);
+        await SecureStore.setItemAsync('refresh_token', data.refresh_token);
+        dispatch(setCredentials({ userId: data.user.id, role: data.user.role }));
+      } else {
+        setStep('role');
+      }
+    } catch (e: any) {
+      setError(e.message ?? 'OTP गलत है / Invalid OTP');
+    } finally { setLoading(false); }
+  };
+
+  const selectRole = async (role: 'WORKER' | 'EMPLOYER') => {
+    setError(''); setLoading(true);
+    try {
+      const data = await apiPost('/auth/set-role', { mobile: `+91${mobile}`, role });
+      await SecureStore.setItemAsync('access_token', data.access_token);
+      await SecureStore.setItemAsync('refresh_token', data.refresh_token);
+      dispatch(setCredentials({ userId: data.user.id, role: data.user.role }));
+      if (role === 'EMPLOYER') navigation.navigate('EmployerRegistration');
+    } catch (e: any) {
+      setError(e.message ?? 'Role selection failed');
+    } finally { setLoading(false); }
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.inner}>
-        <Text style={styles.title}>Login / Register</Text>
-        <Text style={styles.subtitle}>
-          {role === 'EMPLOYER' ? 'Employer Account' : 'Worker Account'}
-        </Text>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+        <ScrollView contentContainerStyle={styles.inner} keyboardShouldPersistTaps="handled">
 
-        {error ? <AlertCard type="danger" message={error} /> : null}
+          <View style={styles.logo}>
+            <Text style={styles.logoText}>KaamSetu</Text>
+            <Text style={styles.logoSub}>काम सेतु · Work Bridge</Text>
+          </View>
 
-        {!otpSent ? (
-          <>
-            <View style={styles.mobileRow}>
-              <View style={styles.prefix}>
-                <Text style={styles.prefixText}>+91</Text>
+          {error ? <AlertCard type="danger" message={error} /> : null}
+
+          {step === 'mobile' && (
+            <View>
+              <Text style={styles.title}>{t('enterMobile', lang)}</Text>
+              <Text style={styles.subtitle}>मोबाइल नंबर से लॉगिन करें</Text>
+              <View style={styles.mobileRow}>
+                <View style={styles.isdBox}><Text style={styles.isdText}>🇮🇳 +91</Text></View>
+                <View style={{ flex: 1 }}>
+                  <Input
+                    label=""
+                    value={mobile}
+                    onChangeText={(v) => setMobile(v.replace(/\D/g, '').slice(0, 10))}
+                    keyboardType="phone-pad"
+                    placeholder="9876543210"
+                    maxLength={10}
+                  />
+                </View>
               </View>
-              <TextInput
-                style={styles.mobileInput}
-                placeholder="Mobile number"
-                keyboardType="number-pad"
-                maxLength={10}
-                value={mobile}
-                onChangeText={setMobile}
-              />
+              <Button title={t('getOtp', lang)} onPress={sendOtp} loading={loading} />
             </View>
-            <Button title="Get OTP" onPress={handleSendOtp} loading={sending} />
-          </>
-        ) : (
-          <>
-            <Text style={styles.hint}>Enter OTP sent to +91 {mobile}</Text>
-            <View style={styles.otpRow}>
-              {otp.map((digit, i) => (
-                <TextInput
-                  key={i}
-                  ref={(r) => { inputRefs.current[i] = r; }}
-                  style={styles.otpBox}
-                  value={digit}
-                  onChangeText={(v) => handleOtpChange(v, i)}
-                  keyboardType="number-pad"
-                  maxLength={1}
-                  textAlign="center"
-                />
-              ))}
-            </View>
-            <Button title="Verify OTP" onPress={handleVerify} loading={verifying} style={{ marginBottom: Spacing.md }} />
-            <TouchableOpacity
-              onPress={countdown <= 0 ? handleSendOtp : undefined}
-              disabled={countdown > 0}
-            >
-              <Text style={[styles.resend, countdown > 0 && styles.resendDisabled]}>
-                {countdown > 0 ? `Resend in ${countdown}s` : 'Resend OTP'}
-              </Text>
-            </TouchableOpacity>
-          </>
-        )}
+          )}
 
-        <View style={styles.switchRow}>
-          <Text style={styles.switchText}>
-            {role === 'WORKER' ? 'Are you an employer? ' : 'Are you a worker? '}
-          </Text>
-          <TouchableOpacity onPress={() => navigation.setParams({ role: role === 'WORKER' ? 'EMPLOYER' : 'WORKER' })}>
-            <Text style={styles.switchLink}>{role === 'WORKER' ? 'Switch to Employer' : 'Switch to Worker'}</Text>
-          </TouchableOpacity>
-        </View>
+          {step === 'otp' && (
+            <View>
+              <TouchableOpacity onPress={() => setStep('mobile')} style={styles.backBtn}>
+                <Text style={styles.backText}>← +91 {mobile}</Text>
+              </TouchableOpacity>
+              <Text style={styles.title}>{t('enterOtp', lang)}</Text>
+              <Text style={styles.subtitle}>{t('otpHint', lang)}</Text>
+              <View style={styles.devHint}>
+                <Text style={styles.devHintText}>🧪 {t('devOtpHint', lang)}</Text>
+              </View>
+              <Input
+                label=""
+                value={otp}
+                onChangeText={(v) => setOtp(v.replace(/\D/g, '').slice(0, 6))}
+                keyboardType="number-pad"
+                placeholder="123456"
+                maxLength={6}
+              />
+              <Button title={t('verifyOtp', lang)} onPress={verifyOtp} loading={loading} />
+            </View>
+          )}
+
+          {step === 'role' && (
+            <View>
+              <Text style={styles.title}>{t('loginAs', lang)}</Text>
+              <Text style={styles.subtitle}>आप क्या हैं? / Who are you?</Text>
+              <TouchableOpacity style={[styles.roleCard, styles.roleWorker]} onPress={() => selectRole('WORKER')}>
+                <Text style={styles.roleIcon}>👷</Text>
+                <Text style={styles.roleTitle}>मज़दूर / कामगार</Text>
+                <Text style={styles.roleDesc}>Worker — काम ढूंढें</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.roleCard, styles.roleEmployer]} onPress={() => selectRole('EMPLOYER')}>
+                <Text style={styles.roleIcon}>🏢</Text>
+                <Text style={styles.roleTitle}>नियोक्ता / मालिक</Text>
+                <Text style={styles.roleDesc}>Employer — कामगार ढूंढें</Text>
+              </TouchableOpacity>
+              {loading && <Text style={{ textAlign: 'center', color: Colors.textSecondary }}>Loading...</Text>}
+            </View>
+          )}
+
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -138,41 +159,29 @@ export function MobileOtpScreen({ navigation, route }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
-  inner: { flex: 1, padding: Spacing.xxl, justifyContent: 'center' },
-  title: { ...Typography.h1, color: Colors.textPrimary, marginBottom: Spacing.sm },
-  subtitle: { ...Typography.body, color: Colors.primary, marginBottom: Spacing.xl },
-  mobileRow: { flexDirection: 'row', marginBottom: Spacing.lg },
-  prefix: {
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: 8,
-    paddingHorizontal: Spacing.md,
-    justifyContent: 'center',
-    marginRight: Spacing.sm,
+  inner: { padding: Spacing.xl, paddingTop: 60 },
+  logo: { alignItems: 'center', marginBottom: 48 },
+  logoText: { fontSize: 40, fontWeight: '800', color: Colors.primary },
+  logoSub: { ...Typography.body, color: Colors.textSecondary, marginTop: 4 },
+  title: { fontSize: 22, fontWeight: '700', color: Colors.textPrimary, marginBottom: 6 },
+  subtitle: { ...Typography.body, color: Colors.textSecondary, marginBottom: Spacing.lg },
+  mobileRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginBottom: Spacing.md },
+  isdBox: { backgroundColor: Colors.surface, borderRadius: 8, padding: 14, marginBottom: 4 },
+  isdText: { fontSize: 16, fontWeight: '600', color: Colors.textPrimary },
+  backBtn: { marginBottom: Spacing.lg },
+  backText: { color: Colors.primary, fontSize: 16, fontWeight: '600' },
+  devHint: {
+    backgroundColor: '#FFF9C4', borderRadius: 8, padding: 10,
+    marginBottom: Spacing.md, borderLeftWidth: 3, borderLeftColor: '#F59E0B',
   },
-  prefixText: { ...Typography.body, color: Colors.textPrimary, fontWeight: '600' },
-  mobileInput: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: 8,
-    paddingHorizontal: Spacing.md,
-    ...Typography.body,
-    color: Colors.textPrimary,
-    backgroundColor: Colors.surface,
-    minHeight: 48,
+  devHintText: { fontSize: 13, color: '#92400E', fontWeight: '600' },
+  roleCard: {
+    borderRadius: 16, padding: Spacing.xl, marginBottom: Spacing.lg,
+    alignItems: 'center', elevation: 3, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8,
   },
-  hint: { ...Typography.caption, color: Colors.textSecondary, marginBottom: Spacing.md },
-  otpRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: Spacing.lg },
-  otpBox: {
-    width: 46, height: 52, borderWidth: 2, borderColor: Colors.border,
-    borderRadius: 8, fontSize: 20, fontWeight: '700', color: Colors.textPrimary,
-    backgroundColor: Colors.surface,
-  },
-  resend: { ...Typography.body, color: Colors.primary, textAlign: 'center' },
-  resendDisabled: { color: Colors.textTertiary },
-  switchRow: { flexDirection: 'row', justifyContent: 'center', marginTop: Spacing.xxl },
-  switchText: { ...Typography.caption, color: Colors.textSecondary },
-  switchLink: { ...Typography.caption, color: Colors.primary, fontWeight: '600' },
+  roleWorker: { backgroundColor: '#EBF5FF', borderWidth: 2, borderColor: Colors.primary },
+  roleEmployer: { backgroundColor: '#F0FFF4', borderWidth: 2, borderColor: Colors.success },
+  roleIcon: { fontSize: 48, marginBottom: 8 },
+  roleTitle: { fontSize: 20, fontWeight: '700', color: Colors.textPrimary },
+  roleDesc: { ...Typography.body, color: Colors.textSecondary, marginTop: 4 },
 });

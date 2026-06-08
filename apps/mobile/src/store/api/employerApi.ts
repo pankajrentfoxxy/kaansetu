@@ -43,6 +43,14 @@ export const employerApi = baseApi.injectEndpoints({
       query: ({ id, action }) => ({ url: `/employer/case-alerts/${id}/action`, method: 'POST', body: { action } }),
       invalidatesTags: ['CaseAlerts'],
     }),
+    mockEmployerBusiness: builder.mutation<any, void>({
+      query: () => ({ url: '/employer/kyc/mock-business', method: 'POST' }),
+      invalidatesTags: ['Employer'],
+    }),
+    mockEmployerPan: builder.mutation<any, void>({
+      query: () => ({ url: '/employer/kyc/mock-pan', method: 'POST' }),
+      invalidatesTags: ['Employer'],
+    }),
   }),
 });
 
@@ -58,4 +66,6 @@ export const {
   useConfirmHireMutation,
   useGetCaseAlertsQuery,
   useMarkAlertActionMutation,
+  useMockEmployerBusinessMutation,
+  useMockEmployerPanMutation,
 } = employerApi;

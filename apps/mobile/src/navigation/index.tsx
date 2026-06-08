@@ -1,8 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { SecureStore } from '../utils/storage';
 import { useSelector } from 'react-redux';
 import { RootState } from '../store';
 import { Colors } from '../theme';
@@ -22,6 +21,7 @@ import { ProfileBlockedScreen } from '../screens/worker/ProfileBlockedScreen';
 
 // Employer Screens
 import { EmployerRegistrationScreen } from '../screens/employer/EmployerRegistrationScreen';
+import { EmployerVerificationScreen } from '../screens/employer/EmployerVerificationScreen';
 import { EmployerDashboardScreen } from '../screens/employer/EmployerDashboardScreen';
 import { PostRequirementScreen } from '../screens/employer/PostRequirementScreen';
 import { MatchedProfilesScreen } from '../screens/employer/MatchedProfilesScreen';
@@ -34,30 +34,19 @@ const Tab = createBottomTabNavigator();
 
 function WorkerTabs() {
   return (
-    <Tab.Navigator
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: Colors.primary,
-        tabBarInactiveTintColor: Colors.textTertiary,
-      }}
-    >
-      <Tab.Screen name="Home" component={WorkerDashboardScreen} options={{ tabBarLabel: 'Home', tabBarIcon: () => null }} />
-      <Tab.Screen name="Alerts" component={KycVerificationScreen} options={{ tabBarLabel: 'Alerts' }} />
+    <Tab.Navigator screenOptions={{ headerShown: false, tabBarActiveTintColor: Colors.primary, tabBarInactiveTintColor: Colors.textTertiary }}>
+      <Tab.Screen name="Home" component={WorkerDashboardScreen} options={{ tabBarLabel: '🏠 Home' }} />
+      <Tab.Screen name="KYC" component={KycVerificationScreen} options={{ tabBarLabel: '✅ KYC' }} />
     </Tab.Navigator>
   );
 }
 
 function EmployerTabs() {
   return (
-    <Tab.Navigator
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: Colors.primary,
-        tabBarInactiveTintColor: Colors.textTertiary,
-      }}
-    >
-      <Tab.Screen name="Home" component={EmployerDashboardScreen} options={{ tabBarLabel: 'Home' }} />
-      <Tab.Screen name="Post" component={PostRequirementScreen} options={{ tabBarLabel: 'Post' }} />
+    <Tab.Navigator screenOptions={{ headerShown: false, tabBarActiveTintColor: Colors.primary, tabBarInactiveTintColor: Colors.textTertiary }}>
+      <Tab.Screen name="Home" component={EmployerDashboardScreen} options={{ tabBarLabel: '🏠 Home' }} />
+      <Tab.Screen name="Post" component={PostRequirementScreen} options={{ tabBarLabel: '➕ Post Job' }} />
+      <Tab.Screen name="Verify" component={EmployerVerificationScreen} options={{ tabBarLabel: '✅ Verify' }} />
     </Tab.Navigator>
   );
 }
@@ -87,6 +76,7 @@ export function AppNavigator() {
         ) : (
           <>
             <Stack.Screen name="EmployerTabs" component={EmployerTabs} />
+            <Stack.Screen name="EmployerVerification" component={EmployerVerificationScreen} />
             <Stack.Screen name="PostRequirement" component={PostRequirementScreen} />
             <Stack.Screen name="MatchedProfiles" component={MatchedProfilesScreen} />
             <Stack.Screen name="WorkerDetail" component={WorkerDetailScreen} />

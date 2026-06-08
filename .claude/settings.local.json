@@ -3,7 +3,37 @@
     "allow": [
       "Bash(pandoc \"C:\\\\Users\\\\bibha\\\\Downloads\\\\kaamsetu\\\\KaamSetu_PRD.docx\" -o \"C:\\\\Users\\\\bibha\\\\Downloads\\\\kaamsetu\\\\KaamSetu_PRD.md\")",
       "PowerShell(python \"C:\\\\Users\\\\bibha\\\\AppData\\\\Roaming\\\\Claude\\\\local-agent-mode-sessions\\\\skills-plugin\\\\72114356-f814-4182-a9b7-de39b19abb18\\\\b4892761-b581-475e-bf06-ab1050dadf0e\\\\skills\\\\docx\\\\scripts\\\\office\\\\unpack.py\" \"C:\\\\Users\\\\bibha\\\\Downloads\\\\kaamsetu\\\\KaamSetu_PRD.docx\" \"C:\\\\Users\\\\bibha\\\\Downloads\\\\kaamsetu\\\\prd_unpacked\" 2>&1)",
-      "PowerShell(Get-ChildItem -Recurse \"C:\\\\Users\\\\bibha\\\\Downloads\\\\kaamsetu\" -File | Where-Object { $_.Name -ne \"KaamSetu_PRD.docx\" -and $_.Name -ne \"KaamSetu_Claude_Code_Prompt.md\" } | Select-Object @{N='Path';E={$_.FullName.Replace\\(\"C:\\\\Users\\\\bibha\\\\Downloads\\\\kaamsetu\\\\\",\"\"\\)}} | Sort-Object Path | Format-Table -AutoSize)"
+      "PowerShell(Get-ChildItem -Recurse \"C:\\\\Users\\\\bibha\\\\Downloads\\\\kaamsetu\" -File | Where-Object { $_.Name -ne \"KaamSetu_PRD.docx\" -and $_.Name -ne \"KaamSetu_Claude_Code_Prompt.md\" } | Select-Object @{N='Path';E={$_.FullName.Replace\\(\"C:\\\\Users\\\\bibha\\\\Downloads\\\\kaamsetu\\\\\",\"\"\\)}} | Sort-Object Path | Format-Table -AutoSize)",
+      "WebFetch(domain:expo.dev)",
+      "PowerShell(Set-Location \"C:\\\\Users\\\\bibha\\\\Downloads\\\\kaamsetu\\\\apps\\\\mobile\"; $env:EXPO_PUBLIC_API_URL=\"http://localhost:3000\"; npx expo start --web --port 8081 --clear 2>&1)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(git pull *)",
+      "Bash(git stash *)",
+      "Bash(git commit -m 'Add logout button to employer dashboard *)",
+      "Bash(git checkout *)",
+      "Bash(git rm *)",
+      "Bash(git commit -m 'Add .gitignore to exclude node_modules *)",
+      "Bash(git fetch *)",
+      "Bash(git rebase *)",
+      "Bash(git merge *)",
+      "Bash(git commit *)",
+      "Bash(eas build *)",
+      "Bash(npm install *)",
+      "Bash(npx expo *)",
+      "Bash(docker compose *)",
+      "Bash(npx prisma *)",
+      "Bash(npx ts-node *)",
+      "Bash(node_modules/.bin/ts-node --version)",
+      "Bash(Start-Process -NoNewWindow -FilePath \"npx\" -ArgumentList \"expo\",\"start\",\"--web\",\"--port\",\"8081\" -RedirectStandardOutput \"web.log\" -RedirectStandardError \"web.err\")",
+      "Bash(cat web.log)",
+      "Bash(cat web.err)",
+      "Bash(ipconfig)",
+      "Bash(node -e \"const l=require\\('./package-lock.json'\\); console.log\\(l.packages['node_modules/next']?.version\\)\")",
+      "Bash(node -e \"const l=require\\('C:/Users/bibha/Downloads/kaamsetu/package-lock.json'\\); const v=l.packages?.['apps/admin/node_modules/next']?.version || l.packages?.['node_modules/next']?.version || l.dependencies?.next?.version; console.log\\('next version in lockfile:', v\\)\")",
+      "Bash(node_modules/.bin/tsc --skipLibCheck --noEmit)",
+      "Bash(npx tsc *)"
     ]
   }
 }
