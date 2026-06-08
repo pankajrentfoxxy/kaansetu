@@ -360,6 +360,131 @@ workerRoutes.get('/notifications', async (req: AuthRequest, res, next) => {
   } catch (err) { next(err); }
 });
 
+// ── DEV-MODE MOCK KYC ENDPOINTS ──────────────────────────────────────────────
+
+workerRoutes.post('/kyc/mock-selfie', async (req: AuthRequest, res, next) => {
+  if (process.env.NODE_ENV === 'production') {
+    res.status(403).json({ error: 'Mock endpoints are not available in production' });
+    return;
+  }
+  try {
+    const worker = await prisma.worker.findUniqueOrThrow({ where: { user_id: req.user!.id } });
+    await prisma.workerDocument.upsert({
+      where: { worker_id: worker.id },
+      create: { worker_id: worker.id, selfie_url: 'mock://selfie' },
+      update: { selfie_url: 'mock://selfie' },
+    });
+    await prisma.workerVerification.create({
+      data: { worker_id: worker.id, check_type: 'SELFIE', status: 'VERIFIED', verified_at: new Date() },
+    });
+    await prisma.worker.update({ where: { id: worker.id }, data: { kyc_status: 'SELFIE_DONE' } });
+    await scoringService.recalculate(worker.id);
+    res.json({ success: true, mock: true });
+  } catch (err) { next(err); }
+});
+
+workerRoutes.post('/kyc/mock-address', async (req: AuthRequest, res, next) => {
+  if (process.env.NODE_ENV === 'production') {
+    res.status(403).json({ error: 'Mock endpoints are not available in production' });
+    return;
+  }
+  try {
+    const worker = await prisma.worker.findUniqueOrThrow({ where: { user_id: req.user!.id } });
+    await prisma.workerLocation.upsert({
+      where: { worker_id: worker.id },
+      create: {
+        worker_id: worker.id,
+        city: req.body.city ?? 'Mumbai',
+        state: req.body.state ?? 'Maharashtra',
+        pincode: req.body.pincode ?? '400001',
+        preferred_cities: [],
+      },
+      update: {
+        city: req.body.city ?? 'Mumbai',
+        state: req.body.state ?? 'Maharashtra',
+        pincode: req.body.pincode ?? '400001',
+      },
+    });
+    await prisma.workerVerification.create({
+      data: { worker_id: worker.id, check_type: 'ADDRESS', status: 'VERIFIED', verified_at: new Date() },
+    });
+    await scoringService.recalculate(worker.id);
+    res.json({ success: true, mock: true });
+  } catch (err) { next(err); }
+});
+
+workerRoutes.post('/kyc/mock-aadhaar', async (req: AuthRequest, res, next) => {
+  if (process.env.NODE_ENV === 'production') {
+    res.status(403).json({ error: 'Mock endpoints are not available in production' });
+    return;
+  }
+  try {
+    const worker = await prisma.worker.findUniqueOrThrow({ where: { user_id: req.user!.id } });
+    await prisma.workerDocument.upsert({
+      where: { worker_id: worker.id },
+      create: { worker_id: worker.id, masked_aadhaar: 'XXXXXXXX1234' },
+      update: { masked_aadhaar: 'XXXXXXXX1234' },
+    });
+    await prisma.worker.update({
+      where: { id: worker.id },
+      data: {
+        full_name: worker.full_name || 'Test Worker',
+        kyc_status: 'AADHAAR_DONE',
+      },
+    });
+    await prisma.workerVerification.create({
+      data: { worker_id: worker.id, check_type: 'AADHAAR', status: 'VERIFIED', verified_at: new Date() },
+    });
+    await scoringService.recalculate(worker.id);
+    res.json({ success: true, mock: true });
+  } catch (err) { next(err); }
+});
+
+workerRoutes.post('/kyc/mock-pan', async (req: AuthRequest, res, next) => {
+  if (process.env.NODE_ENV === 'production') {
+    res.status(403).json({ error: 'Mock endpoints are not available in production' });
+    return;
+  }
+  try {
+    const worker = await prisma.worker.findUniqueOrThrow({ where: { user_id: req.user!.id } });
+    const encrypted = encrypt('ABCDE1234F');
+    await prisma.workerDocument.upsert({
+      where: { worker_id: worker.id },
+      create: { worker_id: worker.id, pan_number: encrypted },
+      update: { pan_number: encrypted },
+    });
+    await prisma.workerVerification.create({
+      data: { worker_id: worker.id, check_type: 'PAN', status: 'VERIFIED', verified_at: new Date() },
+    });
+    await prisma.worker.update({ where: { id: worker.id }, data: { kyc_status: 'PAN_DONE' } });
+    await scoringService.recalculate(worker.id);
+    res.json({ success: true, mock: true });
+  } catch (err) { next(err); }
+});
+
+workerRoutes.post('/kyc/mock-bgc', async (req: AuthRequest, res, next) => {
+  if (process.env.NODE_ENV === 'production') {
+    res.status(403).json({ error: 'Mock endpoints are not available in production' });
+    return;
+  }
+  try {
+    const worker = await prisma.worker.findUniqueOrThrow({ where: { user_id: req.user!.id } });
+    await prisma.backgroundCheck.create({
+      data: {
+        worker_id: worker.id,
+        check_type: 'ONBOARDING',
+        authbridge_ref_id: `MOCK-${Date.now()}`,
+        status: 'CLEAR',
+      },
+    });
+    await prisma.worker.update({ where: { id: worker.id }, data: { kyc_status: 'FULLY_VERIFIED' } });
+    await scoringService.recalculate(worker.id);
+    res.json({ success: true, mock: true });
+  } catch (err) { next(err); }
+});
+
+// ── END MOCK KYC ENDPOINTS ───────────────────────────────────────────────────
+
 workerRoutes.post('/reinstatement/upload', upload.single('document'), async (req: AuthRequest, res, next) => {
   try {
     if (!req.file) { res.status(422).json({ error: 'No file uploaded' }); return; }

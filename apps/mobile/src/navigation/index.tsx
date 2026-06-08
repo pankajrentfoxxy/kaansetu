@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import * as SecureStore from 'expo-secure-store';
+import { SecureStore } from '../utils/storage';
 import { useSelector } from 'react-redux';
 import { RootState } from '../store';
 import { Colors } from '../theme';

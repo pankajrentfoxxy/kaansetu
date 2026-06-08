@@ -6,11 +6,11 @@ services:
     environment:
       POSTGRES_DB: kaamsetu
       POSTGRES_USER: kaamsetu
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme}
+      POSTGRES_PASSWORD: kaamsetu123
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "5433:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U kaamsetu"]
       interval: 10s

@@ -1,6 +1,7 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
-import * as SecureStore from 'expo-secure-store';
+import { SecureStore } from '../../utils/storage';
 
+// EXPO_PUBLIC_ vars are baked at bundle time. Fallback ensures dev always works.
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
 
 export const baseApi = createApi({

@@ -2,7 +2,12 @@ import bcrypt from 'bcrypt';
 import { prisma } from '../config/database';
 import { smsService } from './sms.service';
 
+const DEV_OTP = '123456';
+const IS_DEV = process.env.NODE_ENV !== 'production';
+
 function generateOtp(): string {
+  // In dev, always use 123456 so you can test without SMS
+  if (IS_DEV) return DEV_OTP;
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
@@ -16,10 +21,29 @@ export const otpService = {
       data: { user_id: userId, otp_hash: hash, mobile, purpose, expires_at: expiresAt },
     });
 
+    if (IS_DEV) {
+      // Skip real SMS in dev — OTP is always 123456
+      console.log(`[DEV] OTP for ${mobile}: ${otp}`);
+      return;
+    }
+
     await smsService.sendOtp(mobile, otp);
   },
 
   async verifyOtp(mobile: string, otp: string): Promise<boolean> {
+    // Dev shortcut: 123456 always works
+    if (IS_DEV && otp === DEV_OTP) {
+      // Still create/mark a session so the rest of the flow works
+      const session = await prisma.otpSession.findFirst({
+        where: { mobile, used: false },
+        orderBy: { created_at: 'desc' },
+      });
+      if (session) {
+        await prisma.otpSession.update({ where: { id: session.id }, data: { used: true } });
+      }
+      return true;
+    }
+
     const session = await prisma.otpSession.findFirst({
       where: { mobile, used: false, expires_at: { gt: new Date() } },
       orderBy: { created_at: 'desc' },

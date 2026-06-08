@@ -30,7 +30,11 @@ authRoutes.post('/send-otp', otpRateLimit, validate(SendOtpSchema), async (req, 
     }
     await prisma.user.update({ where: { id: user.id }, data: { mobile_verified: false } });
     await otpService.sendOtp(user.id, mobile, 'login');
-    res.json({ success: true, expires_in: 300 });
+    res.json({
+      success: true,
+      expires_in: 300,
+      ...(process.env.NODE_ENV !== 'production' && { dev_note: 'Use OTP 123456 in development' }),
+    });
   } catch (err) { next(err); }
 });
 

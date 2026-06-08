@@ -3,7 +3,7 @@ import {
   View, Text, TextInput, StyleSheet, SafeAreaView,
   TouchableOpacity, KeyboardAvoidingView, Platform,
 } from 'react-native';
-import * as SecureStore from 'expo-secure-store';
+import { SecureStore } from '../../utils/storage';
 import { useDispatch } from 'react-redux';
 import { setCredentials } from '../../store/authSlice';
 import { useSendOtpMutation, useVerifyOtpMutation } from '../../store/api/authApi';

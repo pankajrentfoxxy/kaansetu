@@ -17,7 +17,15 @@ const app = express();
 
 app.use(helmet());
 app.use(cors({
-  origin: process.env.CORS_ORIGINS?.split(',') ?? ['http://localhost:8081'],
+  origin: (origin, cb) => {
+    // Allow all localhost in dev, or match configured origins
+    const allowed = process.env.CORS_ORIGINS?.split(',') ?? [];
+    if (!origin || process.env.NODE_ENV !== 'production' || allowed.includes(origin)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
 }));
 app.use(morgan('combined', { stream: { write: (msg) => logger.info(msg.trim()) } }));

@@ -46,6 +46,26 @@ export const workerApi = baseApi.injectEndpoints({
       query: () => '/worker/notifications',
       providesTags: ['Notifications'],
     }),
+    mockSelfie: builder.mutation<any, void>({
+      query: () => ({ url: '/worker/kyc/mock-selfie', method: 'POST' }),
+      invalidatesTags: ['Worker'],
+    }),
+    mockAddress: builder.mutation<any, { city?: string; state?: string; pincode?: string }>({
+      query: (body) => ({ url: '/worker/kyc/mock-address', method: 'POST', body }),
+      invalidatesTags: ['Worker'],
+    }),
+    mockAadhaar: builder.mutation<any, void>({
+      query: () => ({ url: '/worker/kyc/mock-aadhaar', method: 'POST' }),
+      invalidatesTags: ['Worker'],
+    }),
+    mockPan: builder.mutation<any, void>({
+      query: () => ({ url: '/worker/kyc/mock-pan', method: 'POST' }),
+      invalidatesTags: ['Worker'],
+    }),
+    mockBgc: builder.mutation<any, void>({
+      query: () => ({ url: '/worker/kyc/mock-bgc', method: 'POST' }),
+      invalidatesTags: ['Worker'],
+    }),
   }),
 });
 
@@ -61,4 +81,9 @@ export const {
   useInitiateBgcMutation,
   useGetJobsQuery,
   useGetNotificationsQuery,
+  useMockSelfieMutation,
+  useMockAddressMutation,
+  useMockAadhaarMutation,
+  useMockPanMutation,
+  useMockBgcMutation,
 } = workerApi;

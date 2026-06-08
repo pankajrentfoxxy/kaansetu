@@ -1,18 +1,41 @@
 import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, ScrollView, RefreshControl, TouchableOpacity, Alert } from 'react-native';
+import { useDispatch } from 'react-redux';
 import { useGetEmployerProfileQuery, useGetRequirementsQuery, useGetCaseAlertsQuery } from '../../store/api/employerApi';
 import { RequirementCard } from '../../components/employer/RequirementCard';
 import { Button } from '../../components/common/Button';
 import { EmptyState } from '../../components/common/EmptyState';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { Colors, Spacing, Typography } from '../../theme';
+import { SecureStore } from '../../utils/storage';
+import { logout } from '../../store/authSlice';
 
 export function EmployerDashboardScreen({ navigation }: any) {
+  const dispatch = useDispatch();
   const { data: employer, isLoading: empLoading, refetch: refetchEmp } = useGetEmployerProfileQuery();
   const { data: requirements = [], isLoading: reqLoading, refetch: refetchReq } = useGetRequirementsQuery();
   const { data: alerts = [] } = useGetCaseAlertsQuery();
 
   const unreadAlerts = alerts.filter((a: any) => !a.employer_action).length;
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Logout / लॉगआउट',
+      'Are you sure you want to logout?\nक्या आप लॉगआउट करना चाहते हैं?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: async () => {
+            await SecureStore.deleteItemAsync('access_token');
+            await SecureStore.deleteItemAsync('refresh_token');
+            dispatch(logout());
+          },
+        },
+      ],
+    );
+  };
 
   if (empLoading) return <LoadingSpinner />;
 
@@ -32,14 +55,19 @@ export function EmployerDashboardScreen({ navigation }: any) {
             <Text style={styles.company}>{employer?.company_name ?? 'Your Company'}</Text>
             <Text style={styles.city}>📍 {employer?.city ?? 'Add city'}</Text>
           </View>
-          <TouchableOpacity style={styles.bell} onPress={() => navigation.navigate('CaseAlert')}>
-            <Text style={styles.bellIcon}>🔔</Text>
-            {unreadAlerts > 0 && (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>{unreadAlerts}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity style={styles.bell} onPress={() => navigation.navigate('CaseAlert')}>
+              <Text style={styles.bellIcon}>🔔</Text>
+              {unreadAlerts > 0 && (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>{unreadAlerts}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
+              <Text style={styles.logoutText}>🚪 Logout</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Metrics */}
@@ -102,4 +130,7 @@ const styles = StyleSheet.create({
   metricLabel: { ...Typography.caption, color: Colors.textSecondary },
   postBtn: { marginBottom: Spacing.xl },
   sectionTitle: { ...Typography.h2, color: Colors.textPrimary, marginBottom: Spacing.md },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  logoutBtn: { paddingVertical: 4, paddingHorizontal: 8, backgroundColor: Colors.dangerLight, borderRadius: 6 },
+  logoutText: { fontSize: 11, color: Colors.danger, fontWeight: '600' },
 });

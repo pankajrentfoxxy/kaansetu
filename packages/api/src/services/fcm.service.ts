@@ -39,6 +39,11 @@ export const fcmService = {
     body: string,
     data?: Record<string, string>,
   ): Promise<string | null> {
+    const hasFirebase = process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_PROJECT_ID !== 'dummy';
+    if (!hasFirebase) {
+      logger.info(`[DEV] FCM skipped → ${title}`);
+      return null;
+    }
     try {
       const messageId = await firebaseAdmin.messaging().send({
         token: fcmToken,
