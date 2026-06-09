@@ -10,6 +10,10 @@
     },
     "preview": {
       "distribution": "internal",
+      "prebuildCommand": "npx expo prebuild --clean",
+      "android": {
+        "buildType": "apk"
+      },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://gentle-cooperation-production-ca4c.up.railway.app"
       }
