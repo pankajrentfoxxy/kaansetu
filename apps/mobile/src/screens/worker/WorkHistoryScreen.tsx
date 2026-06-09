@@ -4,6 +4,7 @@ import { useGetWorkerProfileQuery, useUpdateHistoryMutation } from '../../store/
 import { ProgressBar } from '../../components/common/ProgressBar';
 import { Input } from '../../components/common/Input';
 import { ChipGroup } from '../../components/common/ChipGroup';
+import { DateScrollPicker } from '../../components/common/DateScrollPicker';
 import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
 import { AlertCard } from '../../components/common/AlertCard';
@@ -152,19 +153,19 @@ export function WorkHistoryScreen({ navigation }: any) {
               onChangeText={(v) => update(i, 'role', v)}
               placeholder="e.g. Driver, Cook, Security Guard"
             />
-            <Input
-              label="From Date * (YYYY-MM)"
+            <DateScrollPicker
+              label="From Date *"
               value={entry.from_date}
-              onChangeText={(v) => update(i, 'from_date', v)}
-              placeholder="2021-06"
-              keyboardType="number-pad"
+              onChange={(v) => update(i, 'from_date', v)}
+              monthOnly
+              maxYear={new Date().getFullYear()}
             />
-            <Input
-              label="To Date (YYYY-MM) — leave blank if current job"
+            <DateScrollPicker
+              label="To Date (leave blank if current job)"
               value={entry.to_date}
-              onChangeText={(v) => update(i, 'to_date', v)}
-              placeholder="2023-12"
-              keyboardType="number-pad"
+              onChange={(v) => update(i, 'to_date', v)}
+              monthOnly
+              maxYear={new Date().getFullYear()}
             />
             <Input
               label="Reference Name (Optional)"

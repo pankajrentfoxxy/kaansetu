@@ -33,7 +33,11 @@
       "Bash(node -e \"const l=require\\('./package-lock.json'\\); console.log\\(l.packages['node_modules/next']?.version\\)\")",
       "Bash(node -e \"const l=require\\('C:/Users/bibha/Downloads/kaamsetu/package-lock.json'\\); const v=l.packages?.['apps/admin/node_modules/next']?.version || l.packages?.['node_modules/next']?.version || l.dependencies?.next?.version; console.log\\('next version in lockfile:', v\\)\")",
       "Bash(node_modules/.bin/tsc --skipLibCheck --noEmit)",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "Bash(npx eas *)",
+      "Bash(git check-ignore *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"https://gentle-cooperation-production-ca4c.up.railway.app/health\")",
+      "Bash(node -e ' *)"
     ]
   }
 }

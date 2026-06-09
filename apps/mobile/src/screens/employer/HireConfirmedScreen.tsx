@@ -5,6 +5,7 @@ import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
 import { AlertCard } from '../../components/common/AlertCard';
 import { Input } from '../../components/common/Input';
+import { DateScrollPicker } from '../../components/common/DateScrollPicker';
 import { Colors, Spacing, Typography } from '../../theme';
 
 export function HireConfirmedScreen({ navigation, route }: any) {
@@ -25,7 +26,10 @@ export function HireConfirmedScreen({ navigation, route }: any) {
   }, [confirmed]);
 
   const handleConfirm = async () => {
-    if (!salary || !startDate) { setError('Enter salary and start date'); return; }
+    if (!salary) { setError('Please enter the offered salary'); return; }
+    if (!startDate) { setError('Please select a start date'); return; }
+    if (isNaN(Number(salary)) || Number(salary) <= 0) { setError('Enter a valid salary amount'); return; }
+    setError('');
     try {
       const result = await confirmHire({
         worker_id: workerId,
@@ -35,8 +39,8 @@ export function HireConfirmedScreen({ navigation, route }: any) {
       }).unwrap();
       setOfferUrl(result.offer_letter_url ?? '');
       setConfirmed(true);
-    } catch {
-      setError('Failed to confirm hire. Please try again.');
+    } catch (e: any) {
+      setError(e?.data?.error ?? e?.message ?? 'Failed to confirm hire. Please try again.');
     }
   };
 
@@ -44,11 +48,35 @@ export function HireConfirmedScreen({ navigation, route }: any) {
     return (
       <SafeAreaView style={styles.container}>
         <ScrollView contentContainerStyle={styles.inner}>
-          <Text style={styles.title}>Confirm Hire</Text>
+          <Text style={styles.title}>✅ Confirm Hire</Text>
+          <Text style={styles.subtitle}>
+            {workerName ? `Hiring ${workerName}` : 'Enter offer details below'}
+          </Text>
+
           {error ? <AlertCard type="danger" message={error} /> : null}
-          <Input label="Offered Salary (₹/month)" value={salary} onChangeText={setSalary} keyboardType="number-pad" placeholder="e.g. 20000" />
-          <Input label="Start Date (YYYY-MM-DD)" value={startDate} onChangeText={setStartDate} placeholder="2024-03-01" keyboardType="number-pad" />
-          <Button title="Confirm & Generate Offer Letter" onPress={handleConfirm} loading={isLoading} />
+
+          <Input
+            label="Offered Salary (₹/month) *"
+            value={salary}
+            onChangeText={setSalary}
+            keyboardType="number-pad"
+            placeholder="e.g. 20000"
+          />
+
+          <DateScrollPicker
+            label="Start Date *"
+            value={startDate}
+            onChange={setStartDate}
+            minYear={new Date().getFullYear()}
+            maxYear={new Date().getFullYear() + 2}
+          />
+
+          <Button
+            title={isLoading ? 'Confirming...' : 'Confirm & Generate Offer Letter'}
+            onPress={handleConfirm}
+            loading={isLoading}
+            style={{ marginTop: Spacing.lg }}
+          />
         </ScrollView>
       </SafeAreaView>
     );
@@ -77,13 +105,13 @@ export function HireConfirmedScreen({ navigation, route }: any) {
           message="This worker will be re-verified every 6 months. You'll be alerted immediately if any case is found."
         />
 
-        <Card>
-          <Text style={styles.sectionTitle}>Offer Letter</Text>
-          <Text style={styles.desc}>Generated and sent to both parties</Text>
-          {offerUrl ? (
+        {offerUrl ? (
+          <Card>
+            <Text style={styles.sectionTitle}>Offer Letter</Text>
+            <Text style={styles.desc}>Generated and sent to both parties</Text>
             <Button title="📄 Download Offer Letter" onPress={() => Linking.openURL(offerUrl)} variant="secondary" />
-          ) : null}
-        </Card>
+          </Card>
+        ) : null}
 
         <Button title="Post Another Requirement" onPress={() => navigation.navigate('PostRequirement')} variant="ghost" style={{ marginTop: Spacing.md }} />
       </ScrollView>
@@ -97,7 +125,8 @@ const styles = StyleSheet.create({
   checkContainer: { marginBottom: Spacing.lg },
   checkIcon: { fontSize: 72 },
   congrats: { ...Typography.h1, color: Colors.success, textAlign: 'center', marginBottom: Spacing.sm },
-  subtitle: { ...Typography.body, color: Colors.textSecondary, textAlign: 'center', marginBottom: Spacing.xl },
+  title: { ...Typography.h1, color: Colors.textPrimary, marginBottom: 4, alignSelf: 'flex-start' },
+  subtitle: { ...Typography.body, color: Colors.textSecondary, textAlign: 'center', marginBottom: Spacing.xl, alignSelf: 'flex-start' },
   sectionTitle: { ...Typography.h3, color: Colors.textPrimary, marginBottom: Spacing.md },
   row: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: Colors.border },
   rowLabel: { ...Typography.body, color: Colors.textSecondary },

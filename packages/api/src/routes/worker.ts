@@ -348,6 +348,40 @@ workerRoutes.get('/jobs', async (req: AuthRequest, res, next) => {
   } catch (err) { next(err); }
 });
 
+workerRoutes.post('/jobs/:matchId/apply', async (req: AuthRequest, res, next) => {
+  try {
+    const worker = await prisma.worker.findUniqueOrThrow({ where: { user_id: req.user!.id } });
+    const match = await prisma.match.findFirst({
+      where: { id: req.params.matchId, worker_id: worker.id },
+      include: { requirement: { include: { employer: { include: { user: true } } } } },
+    });
+    if (!match) { res.status(404).json({ error: 'Match not found' }); return; }
+
+    // Notify employer via FCM (best-effort)
+    try {
+      const employerFcm = match.requirement.employer.user?.fcm_token;
+      if (employerFcm) {
+        await fcmService.sendTemplate(employerFcm, 'WORKER_NEW_JOB_MATCH', worker.id, true);
+      }
+    } catch { /* ignore FCM errors */ }
+
+    // Log notification record for the employer
+    try {
+      await prisma.notification.create({
+        data: {
+          type: 'WORKER_APPLIED',
+          employer_id: match.requirement.employer.id,
+          title: 'New Job Application',
+          body: `${worker.full_name || 'A worker'} has applied for your ${match.requirement.job_type?.replace(/_/g, ' ')} requirement.`,
+          data: { match_id: match.id, worker_id: worker.id },
+        },
+      });
+    } catch { /* ignore notification errors */ }
+
+    res.json({ success: true, message: 'Application sent successfully' });
+  } catch (err) { next(err); }
+});
+
 workerRoutes.get('/notifications', async (req: AuthRequest, res, next) => {
   try {
     const worker = await prisma.worker.findUniqueOrThrow({ where: { user_id: req.user!.id } });

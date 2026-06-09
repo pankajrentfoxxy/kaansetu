@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
-  RefreshControl, TouchableOpacity, Alert, Platform,
+  RefreshControl, TouchableOpacity, Alert, Modal,
 } from 'react-native';
 import { useDispatch } from 'react-redux';
 import {
@@ -47,6 +47,29 @@ export function WorkerDashboardScreen({ navigation }: any) {
   const { data: worker, isLoading: profileLoading, refetch } = useGetWorkerProfileQuery();
   const { data: jobs = [], isLoading: jobsLoading } = useGetJobsQuery();
   const [toggleWork, { isLoading: toggling }] = useToggleWorkMutation();
+  const [selectedJob, setSelectedJob] = useState<any>(null);
+  const [applying, setApplying] = useState(false);
+  const [applied, setApplied] = useState<Set<string>>(new Set());
+
+  const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://gentle-cooperation-production-ca4c.up.railway.app';
+
+  const handleApply = async (matchId: string) => {
+    setApplying(true);
+    try {
+      const { SecureStore } = await import('../../utils/storage');
+      const token = await SecureStore.getItemAsync('access_token');
+      await fetch(`${BASE_URL}/api/v1/worker/jobs/${matchId}/apply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      });
+      setApplied((prev) => new Set(prev).add(matchId));
+      setSelectedJob(null);
+    } catch {
+      Alert.alert('Error', 'Could not apply. Please try again.');
+    } finally {
+      setApplying(false);
+    }
+  };
 
   if (profileLoading) return <LoadingSpinner />;
 
@@ -218,8 +241,14 @@ export function WorkerDashboardScreen({ navigation }: any) {
         ) : (
           jobs.map((match: any) => {
             const req = match.requirement ?? {};
+            const isApplied = applied.has(match.id);
             return (
-              <View key={match.id} style={styles.jobCard}>
+              <TouchableOpacity
+                key={match.id}
+                style={[styles.jobCard, isApplied && styles.jobCardApplied]}
+                onPress={() => setSelectedJob(match)}
+                activeOpacity={0.85}
+              >
                 <View style={styles.jobCardTop}>
                   <View style={styles.jobIconCircle}>
                     <Text style={styles.jobIconText}>{JOB_ICONS[req.job_type] ?? '💼'}</Text>
@@ -241,14 +270,68 @@ export function WorkerDashboardScreen({ navigation }: any) {
                     <View style={styles.tag}><Text style={styles.tagText}>🚶 {Number(match.distance_km).toFixed(1)} km</Text></View>
                   )}
                   {req.is_live_in_required && <View style={styles.tagAccent}><Text style={styles.tagText}>🏠 Live-in</Text></View>}
+                  {isApplied && <View style={styles.tagApplied}><Text style={styles.tagAppliedText}>✅ Applied</Text></View>}
                 </View>
-              </View>
+              </TouchableOpacity>
             );
           })
         )}
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* ── Job Detail Modal ── */}
+      <Modal visible={!!selectedJob} transparent animationType="slide" onRequestClose={() => setSelectedJob(null)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
+            {selectedJob && (() => {
+              const req = selectedJob.requirement ?? {};
+              const isApplied = applied.has(selectedJob.id);
+              return (
+                <>
+                  <View style={styles.modalHeader}>
+                    <View style={styles.jobIconCircle}>
+                      <Text style={styles.jobIconText}>{JOB_ICONS[req.job_type] ?? '💼'}</Text>
+                    </View>
+                    <View style={{ flex: 1, marginLeft: 12 }}>
+                      <Text style={styles.modalTitle}>{req.job_type?.replace(/_/g, ' ')?.toUpperCase() ?? 'Job'}</Text>
+                      <Text style={styles.modalCompany}>{req.employer?.company_name ?? 'Company'}</Text>
+                    </View>
+                    <TouchableOpacity onPress={() => setSelectedJob(null)} style={styles.closeBtn}>
+                      <Text style={styles.closeBtnText}>✕</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={styles.modalBody}>
+                    <View style={styles.modalRow}><Text style={styles.modalLabel}>💰 Salary</Text><Text style={styles.modalValue}>{formatSalary(req.salary_min ?? 0)} – {formatSalary(req.salary_max ?? 0)}/month</Text></View>
+                    {req.city && <View style={styles.modalRow}><Text style={styles.modalLabel}>📍 Location</Text><Text style={styles.modalValue}>{req.city}{req.state ? `, ${req.state}` : ''}</Text></View>}
+                    {selectedJob.distance_km && <View style={styles.modalRow}><Text style={styles.modalLabel}>🚶 Distance</Text><Text style={styles.modalValue}>{Number(selectedJob.distance_km).toFixed(1)} km away</Text></View>}
+                    {req.experience_required != null && <View style={styles.modalRow}><Text style={styles.modalLabel}>📋 Experience</Text><Text style={styles.modalValue}>{req.experience_required} yrs required</Text></View>}
+                    {req.is_live_in_required && <View style={styles.modalRow}><Text style={styles.modalLabel}>🏠 Live-in</Text><Text style={styles.modalValue}>Required</Text></View>}
+                    {req.description && <Text style={styles.modalDesc}>{req.description}</Text>}
+                  </View>
+
+                  {isApplied ? (
+                    <View style={styles.appliedBanner}>
+                      <Text style={styles.appliedBannerText}>✅ You have already applied for this job!</Text>
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      style={[styles.applyBtn, applying && { opacity: 0.7 }]}
+                      onPress={() => handleApply(selectedJob.id)}
+                      disabled={applying}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={styles.applyBtnText}>{applying ? 'Applying...' : '🚀 Apply Now'}</Text>
+                    </TouchableOpacity>
+                  )}
+                </>
+              );
+            })()}
+          </View>
+        </View>
+      </Modal>
+
     </SafeAreaView>
   );
 }
@@ -380,5 +463,38 @@ const styles = StyleSheet.create({
   jobTags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   tag: { backgroundColor: '#F1F5F9', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
   tagAccent: { backgroundColor: '#EDE9FE', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
+  tagApplied: { backgroundColor: '#DCFCE7', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
+  tagAppliedText: { fontSize: 12, color: '#166534', fontWeight: '700' },
   tagText: { fontSize: 12, color: Colors.textSecondary, fontWeight: '500' },
+  jobCardApplied: { borderColor: '#86EFAC', borderWidth: 1.5 },
+
+  // Modal
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalSheet: {
+    backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    paddingBottom: 36, overflow: 'hidden',
+  },
+  modalHeader: {
+    flexDirection: 'row', alignItems: 'center', padding: 20,
+    borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
+  },
+  modalTitle: { fontSize: 16, fontWeight: '800', color: '#1A1A2E', textTransform: 'uppercase' },
+  modalCompany: { fontSize: 13, color: Colors.textSecondary, marginTop: 2 },
+  closeBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
+  closeBtnText: { fontSize: 14, color: Colors.textSecondary, fontWeight: '700' },
+  modalBody: { padding: 20 },
+  modalRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F8FAFC' },
+  modalLabel: { fontSize: 14, color: Colors.textSecondary },
+  modalValue: { fontSize: 14, fontWeight: '600', color: '#1A1A2E', flex: 1, textAlign: 'right' },
+  modalDesc: { fontSize: 14, color: Colors.textSecondary, marginTop: 12, lineHeight: 20 },
+  applyBtn: {
+    marginHorizontal: 20, backgroundColor: Colors.primary, borderRadius: 14,
+    paddingVertical: 16, alignItems: 'center',
+  },
+  applyBtnText: { color: '#fff', fontSize: 17, fontWeight: '800' },
+  appliedBanner: {
+    marginHorizontal: 20, backgroundColor: '#F0FFF4', borderRadius: 14,
+    paddingVertical: 16, alignItems: 'center', borderWidth: 1.5, borderColor: '#86EFAC',
+  },
+  appliedBannerText: { color: '#166534', fontSize: 15, fontWeight: '700' },
 });

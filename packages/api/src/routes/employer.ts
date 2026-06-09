@@ -140,13 +140,25 @@ employerRoutes.post('/shortlist', async (req: AuthRequest, res, next) => {
   try {
     const employer = await getEmployer(req.user!.id);
     const { worker_id, requirement_id, notes } = req.body;
-    const shortlist = await prisma.shortlist.create({
-      data: { employer_id: employer.id, worker_id, requirement_id, notes },
+    if (!worker_id) { res.status(422).json({ error: 'worker_id is required' }); return; }
+    // Use upsert to handle duplicate shortlists gracefully
+    const shortlist = await prisma.shortlist.upsert({
+      where: {
+        employer_id_worker_id_requirement_id: {
+          employer_id: employer.id,
+          worker_id,
+          requirement_id: requirement_id ?? '',
+        },
+      },
+      update: { notes },
+      create: { employer_id: employer.id, worker_id, requirement_id: requirement_id ?? '', notes },
     });
-    const worker = await prisma.worker.findUnique({ where: { id: worker_id }, include: { user: true } });
-    if (worker?.user.fcm_token) {
-      await fcmService.sendTemplate(worker.user.fcm_token, 'WORKER_NEW_JOB_MATCH', worker.id, true);
-    }
+    try {
+      const worker = await prisma.worker.findUnique({ where: { id: worker_id }, include: { user: true } });
+      if (worker?.user.fcm_token) {
+        await fcmService.sendTemplate(worker.user.fcm_token, 'WORKER_NEW_JOB_MATCH', worker.id, true);
+      }
+    } catch { /* FCM failure should not fail the shortlist */ }
     res.status(201).json(shortlist);
   } catch (err) { next(err); }
 });
@@ -186,24 +198,33 @@ employerRoutes.post('/hire', async (req: AuthRequest, res, next) => {
       },
     });
 
-    const pdfUrl = await offerLetterService.generate({
-      id: hire.id,
-      workerName: worker.full_name,
-      companyName: employer.company_name,
-      role: req_.job_type,
-      salary: offer_salary,
-      startDate: new Date(start_date),
-      city: employer.city ?? '',
-    });
-
-    await prisma.hire.update({ where: { id: hire.id }, data: { offer_letter_url: pdfUrl } });
-
-    const workerUser = await prisma.user.findUnique({ where: { id: worker.user_id } });
-    if (workerUser?.fcm_token) {
-      await fcmService.sendTemplate(workerUser.fcm_token, 'HIRE_CONFIRMED', worker.id, true);
+    // Offer letter generation is best-effort — hire succeeds even if PDF fails
+    let pdfUrl: string | undefined;
+    try {
+      pdfUrl = await offerLetterService.generate({
+        id: hire.id,
+        workerName: worker.full_name,
+        companyName: employer.company_name,
+        role: req_.job_type,
+        salary: offer_salary,
+        startDate: new Date(start_date),
+        city: employer.city ?? '',
+      });
+      if (pdfUrl) {
+        await prisma.hire.update({ where: { id: hire.id }, data: { offer_letter_url: pdfUrl } });
+      }
+    } catch (pdfErr) {
+      console.error('Offer letter generation failed (non-fatal):', pdfErr);
     }
 
-    res.status(201).json({ ...hire, offer_letter_url: pdfUrl });
+    try {
+      const workerUser = await prisma.user.findUnique({ where: { id: worker.user_id } });
+      if (workerUser?.fcm_token) {
+        await fcmService.sendTemplate(workerUser.fcm_token, 'HIRE_CONFIRMED', worker.id, true);
+      }
+    } catch { /* FCM failure should not fail the hire */ }
+
+    res.status(201).json({ ...hire, offer_letter_url: pdfUrl ?? null });
   } catch (err) { next(err); }
 });
 
