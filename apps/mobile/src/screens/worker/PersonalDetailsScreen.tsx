@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
-import { useUpdatePersonalMutation } from '../../store/api/workerApi';
+import { useGetWorkerProfileQuery, useUpdatePersonalMutation } from '../../store/api/workerApi';
 import { ProgressBar } from '../../components/common/ProgressBar';
 import { Input } from '../../components/common/Input';
 import { ChipGroup } from '../../components/common/ChipGroup';
@@ -26,13 +25,27 @@ const EDUCATION_OPTIONS = [
 ];
 
 export function PersonalDetailsScreen({ navigation }: any) {
+  const { data: worker } = useGetWorkerProfileQuery();
   const [name, setName] = useState('');
   const [dob, setDob] = useState('');
   const [fatherName, setFatherName] = useState('');
   const [gender, setGender] = useState<string[]>([]);
   const [education, setEducation] = useState<string[]>([]);
   const [error, setError] = useState('');
+  const [prefilled, setPrefilled] = useState(false);
   const [updatePersonal, { isLoading }] = useUpdatePersonalMutation();
+
+  // Pre-fill form with existing profile data
+  useEffect(() => {
+    if (worker && !prefilled) {
+      if (worker.full_name) setName(worker.full_name);
+      if (worker.dob) setDob(worker.dob.split('T')[0]); // strip time if ISO
+      if (worker.father_name) setFatherName(worker.father_name);
+      if (worker.gender) setGender([worker.gender]);
+      if (worker.education_level) setEducation([worker.education_level]);
+      setPrefilled(true);
+    }
+  }, [worker, prefilled]);
 
   const handleSave = async () => {
     if (!name.trim()) { setError('Name is required'); return; }

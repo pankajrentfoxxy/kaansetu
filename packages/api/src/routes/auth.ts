@@ -54,7 +54,8 @@ authRoutes.post('/verify-otp', loginRateLimit, validate(VerifyOtpSchema), async 
     }
 
     const isNewUser = !user.mobile_verified;
-    const updatedRole = role ?? user.role;
+    // Only allow role assignment for brand-new users; returning users always keep their existing role
+    const updatedRole = isNewUser ? (role ?? user.role) : user.role;
     await prisma.user.update({
       where: { id: user.id },
       data: { mobile_verified: true, role: updatedRole as any },

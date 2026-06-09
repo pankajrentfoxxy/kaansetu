@@ -363,7 +363,7 @@ workerRoutes.get('/notifications', async (req: AuthRequest, res, next) => {
 // ── DEV-MODE MOCK KYC ENDPOINTS ──────────────────────────────────────────────
 
 workerRoutes.post('/kyc/mock-selfie', async (req: AuthRequest, res, next) => {
-  if (process.env.NODE_ENV === 'production') {
+  if (process.env.NODE_ENV === 'production' && process.env.ALLOW_DEV_OTP !== 'true') {
     res.status(403).json({ error: 'Mock endpoints are not available in production' });
     return;
   }
@@ -384,7 +384,7 @@ workerRoutes.post('/kyc/mock-selfie', async (req: AuthRequest, res, next) => {
 });
 
 workerRoutes.post('/kyc/mock-address', async (req: AuthRequest, res, next) => {
-  if (process.env.NODE_ENV === 'production') {
+  if (process.env.NODE_ENV === 'production' && process.env.ALLOW_DEV_OTP !== 'true') {
     res.status(403).json({ error: 'Mock endpoints are not available in production' });
     return;
   }
@@ -414,7 +414,7 @@ workerRoutes.post('/kyc/mock-address', async (req: AuthRequest, res, next) => {
 });
 
 workerRoutes.post('/kyc/mock-aadhaar', async (req: AuthRequest, res, next) => {
-  if (process.env.NODE_ENV === 'production') {
+  if (process.env.NODE_ENV === 'production' && process.env.ALLOW_DEV_OTP !== 'true') {
     res.status(403).json({ error: 'Mock endpoints are not available in production' });
     return;
   }
@@ -441,7 +441,7 @@ workerRoutes.post('/kyc/mock-aadhaar', async (req: AuthRequest, res, next) => {
 });
 
 workerRoutes.post('/kyc/mock-pan', async (req: AuthRequest, res, next) => {
-  if (process.env.NODE_ENV === 'production') {
+  if (process.env.NODE_ENV === 'production' && process.env.ALLOW_DEV_OTP !== 'true') {
     res.status(403).json({ error: 'Mock endpoints are not available in production' });
     return;
   }
@@ -463,7 +463,7 @@ workerRoutes.post('/kyc/mock-pan', async (req: AuthRequest, res, next) => {
 });
 
 workerRoutes.post('/kyc/mock-bgc', async (req: AuthRequest, res, next) => {
-  if (process.env.NODE_ENV === 'production') {
+  if (process.env.NODE_ENV === 'production' && process.env.ALLOW_DEV_OTP !== 'true') {
     res.status(403).json({ error: 'Mock endpoints are not available in production' });
     return;
   }
