@@ -30,9 +30,11 @@ const app = express();
 app.use(helmet());
 app.use(cors({
   origin: (origin, cb) => {
-    // Allow all localhost in dev, or match configured origins
-    const allowed = process.env.CORS_ORIGINS?.split(',') ?? [];
-    if (!origin || process.env.NODE_ENV !== 'production' || allowed.includes(origin)) {
+    // Allow all origins in dev, or when dev-mode bypass is active (ALLOW_DEV_OTP=true)
+    const isDev = process.env.NODE_ENV !== 'production' || process.env.ALLOW_DEV_OTP === 'true';
+    const allowed = process.env.CORS_ORIGINS?.split(',').map((s) => s.trim()) ?? [];
+    const isLocalhost = !origin || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+    if (isDev || isLocalhost || allowed.includes(origin ?? '')) {
       cb(null, true);
     } else {
       cb(new Error('Not allowed by CORS'));
