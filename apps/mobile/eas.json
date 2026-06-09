@@ -14,7 +14,8 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://gentle-cooperation-production-ca4c.up.railway.app"
+        "EXPO_PUBLIC_API_URL": "https://gentle-cooperation-production-ca4c.up.railway.app",
+        "EXPO_PUBLIC_DEV_MODE": "true"
       }
     },
     "production": {

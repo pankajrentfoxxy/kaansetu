@@ -14,7 +14,8 @@ import { Button } from '../../components/common/Button';
 import { AlertCard } from '../../components/common/AlertCard';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://gentle-cooperation-production-ca4c.up.railway.app';
-type Step = 'mobile' | 'otp' | 'role';
+type Step = 'mobile' | 'otp';
+type Role = 'WORKER' | 'EMPLOYER';
 
 export function MobileOtpScreen({ navigation }: any) {
   const lang = useSelector((s: RootState) => s.auth.language);
@@ -23,6 +24,7 @@ export function MobileOtpScreen({ navigation }: any) {
   const [step, setStep] = useState<Step>('mobile');
   const [mobile, setMobile] = useState('');
   const [otp, setOtp] = useState('');
+  const [role, setRole] = useState<Role>('WORKER');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -52,29 +54,21 @@ export function MobileOtpScreen({ navigation }: any) {
     if (otp.length !== 6) { setError('6 अंकों का OTP दर्ज करें'); return; }
     setError(''); setLoading(true);
     try {
-      const data = await apiPost('/auth/verify-otp', { mobile, otp });
-      if (data.access_token) {
-        await SecureStore.setItemAsync('access_token', data.access_token);
-        await SecureStore.setItemAsync('refresh_token', data.refresh_token);
-        dispatch(setCredentials({ userId: data.user.id, role: data.user.role }));
+      // Pass the selected role so backend sets it correctly on first login
+      const data = await apiPost('/auth/verify-otp', { mobile, otp, role });
+      await SecureStore.setItemAsync('access_token', data.access_token);
+      await SecureStore.setItemAsync('refresh_token', data.refresh_token);
+      // Navigate to EmployerRegistration for new employers before dispatching credentials
+      // (dispatching triggers nav re-render to EmployerTabs)
+      const finalRole = data.user?.role ?? role;
+      if (finalRole === 'EMPLOYER' && data.user?.is_new_user) {
+        dispatch(setCredentials({ userId: data.user.id, role: finalRole }));
+        // AppNavigator will auto-show EmployerTabs
       } else {
-        setStep('role');
+        dispatch(setCredentials({ userId: data.user.id, role: finalRole }));
       }
     } catch (e: any) {
       setError(e.message ?? 'OTP गलत है / Invalid OTP');
-    } finally { setLoading(false); }
-  };
-
-  const selectRole = async (role: 'WORKER' | 'EMPLOYER') => {
-    setError(''); setLoading(true);
-    try {
-      const data = await apiPost('/auth/set-role', { mobile, role });
-      await SecureStore.setItemAsync('access_token', data.access_token);
-      await SecureStore.setItemAsync('refresh_token', data.refresh_token);
-      dispatch(setCredentials({ userId: data.user.id, role: data.user.role }));
-      if (role === 'EMPLOYER') navigation.navigate('EmployerRegistration');
-    } catch (e: any) {
-      setError(e.message ?? 'Role selection failed');
     } finally { setLoading(false); }
   };
 
@@ -94,6 +88,31 @@ export function MobileOtpScreen({ navigation }: any) {
             <View>
               <Text style={styles.title}>{t('enterMobile', lang)}</Text>
               <Text style={styles.subtitle}>मोबाइल नंबर से लॉगिन करें</Text>
+
+              {/* Role Selection */}
+              <Text style={styles.roleLabel}>आप कौन हैं? / I am a:</Text>
+              <View style={styles.roleRow}>
+                <TouchableOpacity
+                  style={[styles.roleChip, role === 'WORKER' && styles.roleChipActive]}
+                  onPress={() => setRole('WORKER')}
+                >
+                  <Text style={styles.roleChipEmoji}>👷</Text>
+                  <Text style={[styles.roleChipText, role === 'WORKER' && styles.roleChipTextActive]}>
+                    कामगार{'\n'}Worker
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.roleChip, role === 'EMPLOYER' && styles.roleChipEmployer]}
+                  onPress={() => setRole('EMPLOYER')}
+                >
+                  <Text style={styles.roleChipEmoji}>🏢</Text>
+                  <Text style={[styles.roleChipText, role === 'EMPLOYER' && styles.roleChipTextActive]}>
+                    नियोक्ता{'\n'}Employer
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Mobile Input */}
               <View style={styles.mobileRow}>
                 <View style={styles.isdBox}><Text style={styles.isdText}>🇮🇳 +91</Text></View>
                 <View style={{ flex: 1 }}>
@@ -133,24 +152,6 @@ export function MobileOtpScreen({ navigation }: any) {
             </View>
           )}
 
-          {step === 'role' && (
-            <View>
-              <Text style={styles.title}>{t('loginAs', lang)}</Text>
-              <Text style={styles.subtitle}>आप क्या हैं? / Who are you?</Text>
-              <TouchableOpacity style={[styles.roleCard, styles.roleWorker]} onPress={() => selectRole('WORKER')}>
-                <Text style={styles.roleIcon}>👷</Text>
-                <Text style={styles.roleTitle}>मज़दूर / कामगार</Text>
-                <Text style={styles.roleDesc}>Worker — काम ढूंढें</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.roleCard, styles.roleEmployer]} onPress={() => selectRole('EMPLOYER')}>
-                <Text style={styles.roleIcon}>🏢</Text>
-                <Text style={styles.roleTitle}>नियोक्ता / मालिक</Text>
-                <Text style={styles.roleDesc}>Employer — कामगार ढूंढें</Text>
-              </TouchableOpacity>
-              {loading && <Text style={{ textAlign: 'center', color: Colors.textSecondary }}>Loading...</Text>}
-            </View>
-          )}
-
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -165,6 +166,22 @@ const styles = StyleSheet.create({
   logoSub: { ...Typography.body, color: Colors.textSecondary, marginTop: 4 },
   title: { fontSize: 22, fontWeight: '700', color: Colors.textPrimary, marginBottom: 6 },
   subtitle: { ...Typography.body, color: Colors.textSecondary, marginBottom: Spacing.lg },
+  roleLabel: { fontSize: 15, fontWeight: '600', color: Colors.textPrimary, marginBottom: 10 },
+  roleRow: { flexDirection: 'row', gap: 12, marginBottom: Spacing.lg },
+  roleChip: {
+    flex: 1, borderRadius: 14, padding: 16, alignItems: 'center',
+    backgroundColor: Colors.surface, borderWidth: 2, borderColor: '#E2E8F0',
+    elevation: 1,
+  },
+  roleChipActive: {
+    borderColor: Colors.primary, backgroundColor: '#EBF5FF',
+  },
+  roleChipEmployer: {
+    borderColor: Colors.success, backgroundColor: '#F0FFF4',
+  },
+  roleChipEmoji: { fontSize: 32, marginBottom: 6 },
+  roleChipText: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary, textAlign: 'center' },
+  roleChipTextActive: { color: Colors.textPrimary },
   mobileRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginBottom: Spacing.md },
   isdBox: { backgroundColor: Colors.surface, borderRadius: 8, padding: 14, marginBottom: 4 },
   isdText: { fontSize: 16, fontWeight: '600', color: Colors.textPrimary },
@@ -175,13 +192,4 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md, borderLeftWidth: 3, borderLeftColor: '#F59E0B',
   },
   devHintText: { fontSize: 13, color: '#92400E', fontWeight: '600' },
-  roleCard: {
-    borderRadius: 16, padding: Spacing.xl, marginBottom: Spacing.lg,
-    alignItems: 'center', elevation: 3, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8,
-  },
-  roleWorker: { backgroundColor: '#EBF5FF', borderWidth: 2, borderColor: Colors.primary },
-  roleEmployer: { backgroundColor: '#F0FFF4', borderWidth: 2, borderColor: Colors.success },
-  roleIcon: { fontSize: 48, marginBottom: 8 },
-  roleTitle: { fontSize: 20, fontWeight: '700', color: Colors.textPrimary },
-  roleDesc: { ...Typography.body, color: Colors.textSecondary, marginTop: 4 },
 });
