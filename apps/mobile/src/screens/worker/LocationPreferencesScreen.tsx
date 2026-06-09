@@ -90,12 +90,15 @@ export function LocationPreferencesScreen({ navigation }: any) {
   const handleSave = async () => {
     setError('');
     try {
+      // Round to 6 decimal places — DB column is Decimal(10,8), GPS returns 9-15 digits
+      const lat = latitude !== undefined ? Math.round(latitude * 1e6) / 1e6 : undefined;
+      const lng = longitude !== undefined ? Math.round(longitude * 1e6) / 1e6 : undefined;
       await updateLocation({
         current_address: address,
         city,
         pincode,
-        latitude,
-        longitude,
+        latitude: lat,
+        longitude: lng,
         preferred_cities: preferredCities,
         is_live_in_ok: liveIn,
         is_pan_india: panIndia,
