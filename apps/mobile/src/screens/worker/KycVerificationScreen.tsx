@@ -27,7 +27,7 @@ import { ProgressBar } from '../../components/common/ProgressBar';
 import { Colors, Spacing, Typography } from '../../theme';
 import { SecureStore } from '../../utils/storage';
 
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://gentle-cooperation-production-ca4c.up.railway.app';
 const IS_DEV = __DEV__ || process.env.NODE_ENV !== 'production';
 
 // Step order: Selfie → Address → Aadhaar → PAN → BGC

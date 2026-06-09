@@ -7,7 +7,7 @@ import { Card } from '../../components/common/Card';
 import { AlertCard } from '../../components/common/AlertCard';
 import { Colors, Spacing, Typography } from '../../theme';
 
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://gentle-cooperation-production-ca4c.up.railway.app';
 const HELPLINE = '18001234567';
 
 export function ProfileBlockedScreen() {

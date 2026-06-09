@@ -13,7 +13,7 @@ import { Input } from '../../components/common/Input';
 import { Button } from '../../components/common/Button';
 import { AlertCard } from '../../components/common/AlertCard';
 
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://gentle-cooperation-production-ca4c.up.railway.app';
 type Step = 'mobile' | 'otp' | 'role';
 
 export function MobileOtpScreen({ navigation }: any) {

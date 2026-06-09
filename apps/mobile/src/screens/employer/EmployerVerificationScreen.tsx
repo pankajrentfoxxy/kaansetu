@@ -10,7 +10,7 @@ import { t } from '../../utils/i18n';
 import { Colors, Spacing, Typography } from '../../theme';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://gentle-cooperation-production-ca4c.up.railway.app';
 
 type Step = 'BUSINESS' | 'PAN' | 'DONE';
 
