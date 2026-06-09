@@ -1,7 +1,8 @@
 import rateLimit from 'express-rate-limit';
 import { RequestHandler } from 'express';
 
-const IS_DEV = process.env.NODE_ENV !== 'production';
+// Bypass rate limits in dev OR when ALLOW_DEV_OTP=true (for testing on Railway)
+const IS_DEV = process.env.NODE_ENV !== 'production' || process.env.ALLOW_DEV_OTP === 'true';
 
 // In dev, skip rate limiting entirely so testing isn't blocked
 const noLimit: RequestHandler = (_req, _res, next) => next();

@@ -33,7 +33,7 @@ export function MobileOtpScreen({ navigation }: any) {
       body: JSON.stringify(body),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.message ?? 'Request failed');
+    if (!res.ok) throw new Error(data.message ?? data.error ?? `Error ${res.status}`);
     return data;
   };
 
@@ -41,7 +41,7 @@ export function MobileOtpScreen({ navigation }: any) {
     if (mobile.length !== 10) { setError('10 अंकों का नंबर दर्ज करें / Enter 10-digit number'); return; }
     setError(''); setLoading(true);
     try {
-      await apiPost('/auth/send-otp', { mobile: `+91${mobile}` });
+      await apiPost('/auth/send-otp', { mobile });
       setStep('otp');
     } catch (e: any) {
       setError(e.message ?? 'OTP भेजने में विफल / Failed to send OTP');
@@ -52,7 +52,7 @@ export function MobileOtpScreen({ navigation }: any) {
     if (otp.length !== 6) { setError('6 अंकों का OTP दर्ज करें'); return; }
     setError(''); setLoading(true);
     try {
-      const data = await apiPost('/auth/verify-otp', { mobile: `+91${mobile}`, otp });
+      const data = await apiPost('/auth/verify-otp', { mobile, otp });
       if (data.access_token) {
         await SecureStore.setItemAsync('access_token', data.access_token);
         await SecureStore.setItemAsync('refresh_token', data.refresh_token);
@@ -68,7 +68,7 @@ export function MobileOtpScreen({ navigation }: any) {
   const selectRole = async (role: 'WORKER' | 'EMPLOYER') => {
     setError(''); setLoading(true);
     try {
-      const data = await apiPost('/auth/set-role', { mobile: `+91${mobile}`, role });
+      const data = await apiPost('/auth/set-role', { mobile, role });
       await SecureStore.setItemAsync('access_token', data.access_token);
       await SecureStore.setItemAsync('refresh_token', data.refresh_token);
       dispatch(setCredentials({ userId: data.user.id, role: data.user.role }));
