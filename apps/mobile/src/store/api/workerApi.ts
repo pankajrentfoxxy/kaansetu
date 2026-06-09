@@ -66,6 +66,21 @@ export const workerApi = baseApi.injectEndpoints({
       query: () => ({ url: '/worker/kyc/mock-bgc', method: 'POST' }),
       invalidatesTags: ['Worker'],
     }),
+    applyJob: builder.mutation<any, string>({
+      query: (matchId) => ({ url: `/worker/jobs/${matchId}/apply`, method: 'POST' }),
+    }),
+    getWorkerOffers: builder.query<any[], void>({
+      query: () => '/worker/offers',
+      providesTags: ['Matches'],
+    }),
+    acceptOffer: builder.mutation<any, string>({
+      query: (hireId) => ({ url: `/worker/offers/${hireId}/accept`, method: 'PUT' }),
+      invalidatesTags: ['Matches'],
+    }),
+    rejectOffer: builder.mutation<any, string>({
+      query: (hireId) => ({ url: `/worker/offers/${hireId}/reject`, method: 'PUT' }),
+      invalidatesTags: ['Matches'],
+    }),
   }),
 });
 
@@ -86,4 +101,8 @@ export const {
   useMockAadhaarMutation,
   useMockPanMutation,
   useMockBgcMutation,
+  useApplyJobMutation,
+  useGetWorkerOffersQuery,
+  useAcceptOfferMutation,
+  useRejectOfferMutation,
 } = workerApi;
