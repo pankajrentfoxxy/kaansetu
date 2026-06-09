@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ScrollView } from 'react-native';
 import * as Location from 'expo-location';
-import { useUpdateLocationMutation } from '../../store/api/workerApi';
+import { useGetWorkerProfileQuery, useUpdateLocationMutation } from '../../store/api/workerApi';
 import { ProgressBar } from '../../components/common/ProgressBar';
 import { Input } from '../../components/common/Input';
 import { ChipGroup } from '../../components/common/ChipGroup';
@@ -18,6 +18,7 @@ const TOP_CITIES = [
 ];
 
 export function LocationPreferencesScreen({ navigation }: any) {
+  const { data: worker } = useGetWorkerProfileQuery();
   const [address, setAddress] = useState('');
   const [city, setCity] = useState('');
   const [pincode, setPincode] = useState('');
@@ -27,25 +28,57 @@ export function LocationPreferencesScreen({ navigation }: any) {
   const [liveIn, setLiveIn] = useState(false);
   const [panIndia, setPanIndia] = useState(false);
   const [detecting, setDetecting] = useState(false);
+  const [locationDetected, setLocationDetected] = useState(false);
   const [error, setError] = useState('');
+  const [prefilled, setPrefilled] = useState(false);
   const [updateLocation, { isLoading }] = useUpdateLocationMutation();
+
+  // Pre-fill from existing profile
+  useEffect(() => {
+    if (worker?.location && !prefilled) {
+      const loc = worker.location;
+      if (loc.current_address) setAddress(loc.current_address);
+      if (loc.city) setCity(loc.city);
+      if (loc.pincode) setPincode(loc.pincode);
+      if (loc.latitude) setLatitude(loc.latitude);
+      if (loc.longitude) setLongitude(loc.longitude);
+      if (loc.preferred_cities?.length) setPreferredCities(loc.preferred_cities);
+      if (worker.is_live_in_ok) setLiveIn(true);
+      if (worker.is_pan_india) setPanIndia(true);
+      setPrefilled(true);
+    }
+  }, [worker, prefilled]);
+
+  // Auto-detect location on mount (only if no saved location)
+  useEffect(() => {
+    if (!prefilled) return; // wait for prefill check first
+    if (worker?.location?.city) return; // already have saved location
+    detectLocation();
+  }, [prefilled]);
 
   const detectLocation = async () => {
     setDetecting(true);
+    setError('');
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') { setError('Location permission denied'); return; }
+      if (status !== 'granted') {
+        setError('Location permission denied — please enter manually below');
+        return;
+      }
       const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
       setLatitude(pos.coords.latitude);
       setLongitude(pos.coords.longitude);
       const [place] = await Location.reverseGeocodeAsync(pos.coords);
       if (place) {
-        setAddress(`${place.street ?? ''}, ${place.district ?? place.city ?? ''}, ${place.region ?? ''}`);
-        setCity(place.city ?? place.district ?? '');
+        const addr = [place.street, place.district ?? place.subregion ?? place.city, place.region]
+          .filter(Boolean).join(', ');
+        setAddress(addr);
+        setCity(place.city ?? place.district ?? place.subregion ?? '');
         setPincode(place.postalCode ?? '');
+        setLocationDetected(true);
       }
     } catch {
-      setError('Could not detect location');
+      setError('Could not detect location — please enter manually below');
     } finally {
       setDetecting(false);
     }
@@ -78,17 +111,47 @@ export function LocationPreferencesScreen({ navigation }: any) {
       <ScrollView contentContainerStyle={styles.inner} keyboardShouldPersistTaps="handled">
         <ProgressBar current={4} total={7} label="Step 4 of 7" />
         <Text style={styles.title}>Location & Preferences</Text>
+
+        {detecting && (
+          <AlertCard type="info" message="📍 Detecting your location automatically..." />
+        )}
+        {locationDetected && !detecting && (
+          <AlertCard type="success" message={`📍 Location detected: ${city || address}`} />
+        )}
         {error ? <AlertCard type="danger" message={error} /> : null}
 
-        <Button title="📍 Detect my location" onPress={detectLocation} variant="secondary" loading={detecting} style={{ marginBottom: Spacing.lg }} />
+        {/* Re-detect button */}
+        <Button
+          title={detecting ? 'Detecting...' : '📍 Re-detect my location'}
+          onPress={detectLocation}
+          variant="secondary"
+          loading={detecting}
+          style={{ marginBottom: Spacing.lg }}
+        />
 
-        {address ? <AlertCard type="success" message={`Detected: ${address}`} /> : null}
+        <Input
+          label="Living Address"
+          value={address}
+          onChangeText={setAddress}
+          multiline
+          placeholder="Your current address"
+        />
+        <Input
+          label="City *"
+          value={city}
+          onChangeText={setCity}
+          placeholder="e.g. Delhi"
+        />
+        <Input
+          label="Pincode"
+          value={pincode}
+          onChangeText={setPincode}
+          keyboardType="number-pad"
+          maxLength={6}
+          placeholder="110001"
+        />
 
-        <Input label="Living Address" value={address} onChangeText={setAddress} multiline placeholder="Your current address" />
-        <Input label="City" value={city} onChangeText={setCity} placeholder="e.g. Delhi" />
-        <Input label="Pincode" value={pincode} onChangeText={setPincode} keyboardType="number-pad" maxLength={6} />
-
-        <Text style={styles.label}>Preferred Job Cities</Text>
+        <Text style={styles.label}>Preferred Job Cities (select multiple)</Text>
         <ChipGroup
           options={TOP_CITIES.map((c) => ({ value: c, label: c }))}
           selected={preferredCities}
