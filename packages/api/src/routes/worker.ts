@@ -8,6 +8,7 @@ import { surepassService } from '../services/surepass.service';
 import { authrbridge } from '../services/authbridge.service';
 import { s3Service } from '../services/s3.service';
 import { scoringService } from '../services/scoring.service';
+import { fcmService } from '../services/fcm.service';
 import { encrypt, validateMaskedAadhaar } from '../utils/crypto';
 
 export const workerRoutes = Router();
