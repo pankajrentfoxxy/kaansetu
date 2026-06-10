@@ -3,7 +3,8 @@ import {
   View, Text, StyleSheet, Modal, TouchableOpacity, ScrollView,
   NativeSyntheticEvent, NativeScrollEvent,
 } from 'react-native';
-import { Colors } from '../../theme';
+import { Colors, Radius, Typography } from '../../theme';
+import { Icon } from './Icon';
 
 const ITEM_HEIGHT = 44;
 const VISIBLE_ITEMS = 5;
@@ -98,14 +99,22 @@ const col = StyleSheet.create({
   textActive: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary },
 });
 
+const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+
 export function DateScrollPicker({ label, value, onChange, minYear = 1970, maxYear = 2030, monthOnly = false }: Props) {
   const [visible, setVisible] = useState(false);
 
-  // Parse current value
+  // Parse current value, clamped to the allowed range. When there is no value we
+  // default to today (clamped) — never a stray out-of-range year like 2000, which
+  // would otherwise be committed if the user opens the picker without scrolling.
+  const today = new Date();
   const parsed = value ? value.split('-') : [];
-  const [year, setYear] = useState(parseInt(parsed[0] ?? '2000', 10));
-  const [month, setMonth] = useState(parseInt(parsed[1] ?? '1', 10));
-  const [day, setDay] = useState(parseInt(parsed[2] ?? '1', 10));
+  const defaultYear = clamp(parseInt(parsed[0] ?? '', 10) || today.getFullYear(), minYear, maxYear);
+  const defaultMonth = clamp(parseInt(parsed[1] ?? '', 10) || (today.getMonth() + 1), 1, 12);
+  const defaultDay = clamp(parseInt(parsed[2] ?? '', 10) || today.getDate(), 1, 31);
+  const [year, setYear] = useState(defaultYear);
+  const [month, setMonth] = useState(defaultMonth);
+  const [day, setDay] = useState(defaultDay);
 
   const years = range(minYear, maxYear);
   const months = range(1, 12);
@@ -124,9 +133,11 @@ export function DateScrollPicker({ label, value, onChange, minYear = 1970, maxYe
     : (value ? `${String(day).padStart(2, '0')} ${MONTHS[month - 1]} ${year}` : 'Select date');
 
   const handleDone = () => {
-    const mm = String(month).padStart(2, '0');
-    const dd = String(Math.min(day, daysInMonth(year, month))).padStart(2, '0');
-    onChange(monthOnly ? `${year}-${mm}` : `${year}-${mm}-${dd}`);
+    const safeYear = clamp(year, minYear, maxYear);
+    const safeMonth = clamp(month, 1, 12);
+    const mm = String(safeMonth).padStart(2, '0');
+    const dd = String(Math.min(day, daysInMonth(safeYear, safeMonth))).padStart(2, '0');
+    onChange(monthOnly ? `${safeYear}-${mm}` : `${safeYear}-${mm}-${dd}`);
     setVisible(false);
   };
 
@@ -138,7 +149,7 @@ export function DateScrollPicker({ label, value, onChange, minYear = 1970, maxYe
           <Text style={[styles.inputText, !value && styles.placeholder]}>
             {displayValue}
           </Text>
-          <Text style={styles.calIcon}>📅</Text>
+          <Icon name="calendar-outline" size={20} color={Colors.textTertiary} />
         </TouchableOpacity>
       </View>
 
@@ -188,24 +199,23 @@ export function DateScrollPicker({ label, value, onChange, minYear = 1970, maxYe
 }
 
 const styles = StyleSheet.create({
-  field: { marginBottom: 12 },
-  label: { fontSize: 13, fontWeight: '600', color: '#64748B', marginBottom: 6 },
+  field: { marginBottom: 16 },
+  label: { ...Typography.captionStrong, color: Colors.textSecondary, marginBottom: 6 },
   input: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    borderWidth: 1.5, borderColor: '#E2E8F0', borderRadius: 10,
-    paddingHorizontal: 14, paddingVertical: 13, backgroundColor: '#fff',
+    borderWidth: 1.5, borderColor: Colors.border, borderRadius: Radius.md,
+    paddingHorizontal: 16, minHeight: 52, backgroundColor: Colors.surface,
   },
-  inputText: { fontSize: 16, color: Colors.textPrimary, flex: 1 },
-  placeholder: { color: '#94A3B8' },
-  calIcon: { fontSize: 18 },
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 32 },
+  inputText: { ...Typography.bodyLg, color: Colors.textPrimary, flex: 1 },
+  placeholder: { color: Colors.textTertiary },
+  overlay: { flex: 1, backgroundColor: Colors.overlay, justifyContent: 'flex-end' },
+  sheet: { backgroundColor: Colors.surface, borderTopLeftRadius: Radius.xl, borderTopRightRadius: Radius.xl, paddingBottom: 32 },
   sheetHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    padding: 16, borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
+    padding: 16, borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
-  sheetTitle: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary },
-  cancelBtn: { fontSize: 16, color: Colors.textSecondary },
-  doneBtn: { fontSize: 16, fontWeight: '700', color: Colors.primary },
+  sheetTitle: { ...Typography.h3, color: Colors.textPrimary },
+  cancelBtn: { ...Typography.body, color: Colors.textSecondary },
+  doneBtn: { ...Typography.bodyStrong, color: Colors.primary },
   columns: { flexDirection: 'row', paddingHorizontal: 16, paddingTop: 8 },
 });

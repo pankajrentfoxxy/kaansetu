@@ -383,6 +383,66 @@ workerRoutes.post('/jobs/:matchId/apply', async (req: AuthRequest, res, next) =>
   } catch (err) { next(err); }
 });
 
+// Worker: view incoming job offers
+workerRoutes.get('/offers', async (req: AuthRequest, res, next) => {
+  try {
+    const worker = await prisma.worker.findUniqueOrThrow({ where: { user_id: req.user!.id } });
+    const offers = await prisma.hire.findMany({
+      where: { worker_id: worker.id },
+      include: {
+        employer: true,
+        requirement: true,
+      },
+      orderBy: { created_at: 'desc' },
+    });
+    res.json(offers);
+  } catch (err) { next(err); }
+});
+
+// Worker: accept an offer (e-sign)
+workerRoutes.put('/offers/:hireId/accept', async (req: AuthRequest, res, next) => {
+  try {
+    const worker = await prisma.worker.findUniqueOrThrow({ where: { user_id: req.user!.id } });
+    const hire = await prisma.hire.findFirstOrThrow({
+      where: { id: req.params.hireId, worker_id: worker.id },
+      include: { employer: { include: { user: true } }, requirement: true },
+    });
+    const updated = await prisma.hire.update({
+      where: { id: hire.id },
+      data: { esign_worker_at: new Date(), status: 'ACTIVE' },
+    });
+    // Notify employer
+    try {
+      if (hire.employer.user?.fcm_token) {
+        await fcmService.sendTemplate(hire.employer.user.fcm_token, 'WORKER_NEW_JOB_MATCH', worker.id, true);
+      }
+      await prisma.notification.create({
+        data: {
+          type: 'OFFER_ACCEPTED',
+          employer_id: hire.employer_id,
+          title: 'Offer Accepted!',
+          body: `${worker.full_name || 'The worker'} has accepted your job offer and will join on ${hire.start_date.toLocaleDateString('en-IN')}.`,
+          data: { hire_id: hire.id },
+        },
+      });
+    } catch { /* ignore notification errors */ }
+    res.json(updated);
+  } catch (err) { next(err); }
+});
+
+// Worker: reject an offer
+workerRoutes.put('/offers/:hireId/reject', async (req: AuthRequest, res, next) => {
+  try {
+    const worker = await prisma.worker.findUniqueOrThrow({ where: { user_id: req.user!.id } });
+    await prisma.hire.findFirstOrThrow({ where: { id: req.params.hireId, worker_id: worker.id } });
+    const updated = await prisma.hire.update({
+      where: { id: req.params.hireId },
+      data: { status: 'TERMINATED' },
+    });
+    res.json(updated);
+  } catch (err) { next(err); }
+});
+
 workerRoutes.get('/notifications', async (req: AuthRequest, res, next) => {
   try {
     const worker = await prisma.worker.findUniqueOrThrow({ where: { user_id: req.user!.id } });

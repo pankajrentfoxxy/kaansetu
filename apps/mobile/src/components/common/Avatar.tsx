@@ -3,8 +3,8 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Colors } from '../../theme';
 
 const COLORS = [
-  '#1A56A0', '#2E7D32', '#C62828', '#6A1B9A',
-  '#F57F17', '#00695C', '#283593', '#4E342E',
+  Colors.primary, Colors.teal, Colors.purple, Colors.coral,
+  Colors.warningDark, Colors.pink, Colors.green, Colors.successDark,
 ];
 
 function getColor(name: string): string {
@@ -14,18 +14,22 @@ function getColor(name: string): string {
 }
 
 function getInitials(name: string): string {
-  return name.split(' ').slice(0, 2).map((w) => w[0]?.toUpperCase() ?? '').join('');
+  return name.split(' ').slice(0, 2).map((w) => w[0]?.toUpperCase() ?? '').join('') || '?';
 }
 
 interface Props {
   name: string;
   size?: number;
   fontSize?: number;
+  color?: string;
 }
 
-export const Avatar: React.FC<Props> = ({ name, size = 48, fontSize = 18 }) => (
-  <View style={[styles.circle, { width: size, height: size, borderRadius: size / 2, backgroundColor: getColor(name) }]}>
-    <Text style={[styles.text, { fontSize }]}>{getInitials(name)}</Text>
+export const Avatar: React.FC<Props> = ({ name, size = 48, fontSize, color }) => (
+  <View style={[
+    styles.circle,
+    { width: size, height: size, borderRadius: size / 2, backgroundColor: color ?? getColor(name) },
+  ]}>
+    <Text style={[styles.text, { fontSize: fontSize ?? size * 0.38 }]}>{getInitials(name)}</Text>
   </View>
 );
 

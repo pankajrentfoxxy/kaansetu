@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useDispatch } from 'react-redux';
 import { setLanguage } from '../../store/authSlice';
-import { Colors } from '../../theme';
+import { Colors, Radius, Shadows, Spacing, Typography } from '../../theme';
+import { BrandLogo } from '../../components/common/BrandLogo';
+import { Icon } from '../../components/common/Icon';
 
 const LANGUAGES = [
   { value: 'hi', label: 'हिन्दी', sub: 'Hindi' },
@@ -27,75 +30,81 @@ export function SplashLanguageScreen({ navigation }: any) {
   };
 
   return (
-    <SafeAreaView style={st.container}>
-      <View style={st.inner}>
-        {/* Logo */}
-        <View style={st.logoWrap}>
-          <View style={st.logoIcon}>
-            <Text style={st.logoIconText}>KS</Text>
-          </View>
-          <Text style={st.logoText}>KaamSetu</Text>
-          <Text style={st.logoTagline}>काम सेतु · Work Bridge</Text>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <View style={styles.logoWrap}>
+          <BrandLogo size={76} />
         </View>
 
-        <Text style={st.heading}>अपनी भाषा चुनें</Text>
-        <Text style={st.subheading}>Choose your language</Text>
+        <Text style={styles.heading}>अपनी भाषा चुनें</Text>
+        <Text style={styles.subheading}>Choose your language</Text>
 
-        <View style={st.langGrid}>
-          {LANGUAGES.map((lang) => (
-            <TouchableOpacity
-              key={lang.value}
-              style={[st.langChip, selected === lang.value && st.langChipActive]}
-              onPress={() => setSelected(lang.value)}
-            >
-              <Text style={[st.langLabel, selected === lang.value && st.langLabelActive]}>
-                {lang.label}
-              </Text>
-              <Text style={[st.langSub, selected === lang.value && st.langSubActive]}>
-                {lang.sub}
-              </Text>
-            </TouchableOpacity>
-          ))}
+        <View style={styles.grid}>
+          {LANGUAGES.map((lang) => {
+            const active = selected === lang.value;
+            return (
+              <TouchableOpacity
+                key={lang.value}
+                style={[styles.langCard, active && styles.langCardActive]}
+                onPress={() => setSelected(lang.value)}
+                activeOpacity={0.85}
+              >
+                <Text style={[styles.langLabel, active && styles.langLabelActive]}>{lang.label}</Text>
+                <Text style={[styles.langSub, active && styles.langSubActive]}>{lang.sub}</Text>
+                {active && (
+                  <View style={styles.check}>
+                    <Icon name="checkmark" size={13} color="#fff" />
+                  </View>
+                )}
+              </TouchableOpacity>
+            );
+          })}
         </View>
+      </ScrollView>
 
-        <TouchableOpacity style={st.continueBtn} onPress={handleContinue} activeOpacity={0.85}>
-          <Text style={st.continueBtnText}>आगे बढ़ें · Continue →</Text>
+      <View style={styles.footer}>
+        <TouchableOpacity style={styles.continueBtn} onPress={handleContinue} activeOpacity={0.9}>
+          <Text style={styles.continueBtnText}>आगे बढ़ें</Text>
+          <Icon name="arrow-forward" size={22} color="#fff" />
         </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
 }
 
-const st = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F0F4F8' },
-  inner: { flex: 1, padding: 24, justifyContent: 'center' },
-  logoWrap: { alignItems: 'center', marginBottom: 40 },
-  logoIcon: {
-    width: 72, height: 72, borderRadius: 20,
-    backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center',
-    marginBottom: 12,
-    shadowColor: Colors.primary, shadowOpacity: 0.35, shadowRadius: 12, elevation: 8,
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: Colors.background },
+  scroll: { paddingHorizontal: Spacing.xl, paddingTop: Spacing.xxl, paddingBottom: Spacing.lg },
+  logoWrap: { alignItems: 'center', marginBottom: Spacing.xxxl },
+  heading: { ...Typography.h2, color: Colors.textPrimary, textAlign: 'center' },
+  subheading: { ...Typography.body, color: Colors.textSecondary, textAlign: 'center', marginTop: 2, marginBottom: Spacing.xl },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+  langCard: {
+    width: '48%',
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.lg,
+    paddingVertical: Spacing.lg,
+    paddingHorizontal: Spacing.lg,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    marginBottom: Spacing.md,
+    ...Shadows.sm,
   },
-  logoIconText: { color: '#fff', fontSize: 26, fontWeight: '800' },
-  logoText: { fontSize: 32, fontWeight: '800', color: Colors.primary },
-  logoTagline: { fontSize: 15, color: Colors.textSecondary, marginTop: 4 },
-  heading: { fontSize: 20, fontWeight: '700', color: '#1A1A2E', marginBottom: 4 },
-  subheading: { fontSize: 15, color: Colors.textSecondary, marginBottom: 20 },
-  langGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 32 },
-  langChip: {
-    backgroundColor: '#fff', borderRadius: 12,
-    paddingVertical: 12, paddingHorizontal: 16,
-    borderWidth: 1.5, borderColor: '#E2E8F0',
-    minWidth: 100,
+  langCardActive: { borderColor: Colors.primary, backgroundColor: Colors.primaryLight },
+  langLabel: { ...Typography.h3, color: Colors.textPrimary },
+  langLabelActive: { color: Colors.primaryText },
+  langSub: { ...Typography.caption, color: Colors.textTertiary, marginTop: 2 },
+  langSubActive: { color: Colors.primary },
+  check: {
+    position: 'absolute', top: 10, right: 10,
+    width: 22, height: 22, borderRadius: 11, backgroundColor: Colors.primary,
+    alignItems: 'center', justifyContent: 'center',
   },
-  langChipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  langLabel: { fontSize: 17, fontWeight: '700', color: Colors.textPrimary },
-  langLabelActive: { color: '#fff' },
-  langSub: { fontSize: 11, color: Colors.textSecondary, marginTop: 2 },
-  langSubActive: { color: 'rgba(255,255,255,0.75)' },
+  footer: { paddingHorizontal: Spacing.xl, paddingTop: Spacing.md, paddingBottom: Spacing.sm, borderTopWidth: 1, borderTopColor: Colors.border, backgroundColor: Colors.surface },
   continueBtn: {
-    backgroundColor: Colors.primary, borderRadius: 16, padding: 18, alignItems: 'center',
-    shadowColor: Colors.primary, shadowOpacity: 0.3, shadowRadius: 8, elevation: 5,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: Colors.accent, borderRadius: Radius.md, paddingVertical: 16,
+    ...Shadows.accent,
   },
-  continueBtnText: { color: '#fff', fontSize: 17, fontWeight: '800' },
+  continueBtnText: { color: '#fff', ...Typography.button, fontSize: 17 },
 });

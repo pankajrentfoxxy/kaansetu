@@ -3,9 +3,11 @@ import { View, Text, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { Ionicons } from '@expo/vector-icons';
 import { useSelector } from 'react-redux';
 import { RootState } from '../store';
-import { Colors } from '../theme';
+import { Colors, Shadows, Typography } from '../theme';
+import { t } from '../utils/i18n';
 
 // Auth Screens
 import { SplashLanguageScreen } from '../screens/worker/SplashLanguageScreen';
@@ -33,91 +35,70 @@ import { HireConfirmedScreen } from '../screens/employer/HireConfirmedScreen';
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-function TabIcon({ emoji, label, focused }: { emoji: string; label: string; focused: boolean }) {
+function TabIcon({ icon, label, focused }: { icon: string; label: string; focused: boolean }) {
+  const color = focused ? Colors.primary : Colors.textTertiary;
   return (
     <View style={tabStyles.iconWrap}>
-      <Text style={tabStyles.emoji}>{emoji}</Text>
-      <Text style={[tabStyles.label, focused && tabStyles.labelActive]}>{label}</Text>
+      <Ionicons name={(focused ? icon : `${icon}-outline`) as any} size={24} color={color} />
+      <Text style={[tabStyles.label, { color }, focused && tabStyles.labelActive]} numberOfLines={1}>
+        {label}
+      </Text>
     </View>
   );
 }
 
 const tabStyles = StyleSheet.create({
-  iconWrap: { alignItems: 'center', justifyContent: 'center', paddingTop: 4 },
-  emoji: { fontSize: 20 },
-  label: { fontSize: 10, color: Colors.textTertiary, marginTop: 2, fontWeight: '500' },
-  labelActive: { color: Colors.primary, fontWeight: '700' },
+  iconWrap: { alignItems: 'center', justifyContent: 'center', width: 72, paddingTop: 6 },
+  label: { ...Typography.tiny, marginTop: 3 },
+  labelActive: { fontWeight: '700' },
 });
 
 const TAB_BAR_STYLE = {
-  height: 64,
-  paddingBottom: 8,
+  height: 68,
+  paddingBottom: 10,
   paddingTop: 4,
-  backgroundColor: '#fff',
+  backgroundColor: Colors.surface,
   borderTopWidth: 1,
-  borderTopColor: '#E2E8F0',
-  elevation: 8,
-  shadowColor: '#000',
-  shadowOpacity: 0.08,
-  shadowRadius: 8,
+  borderTopColor: Colors.border,
+  ...Shadows.lg,
 };
 
 function WorkerTabs() {
+  const lang = useSelector((s: RootState) => s.auth.language);
   return (
-    <Tab.Navigator
-      screenOptions={{
-        headerShown: false,
-        tabBarStyle: TAB_BAR_STYLE,
-        tabBarShowLabel: false,
-      }}
-    >
+    <Tab.Navigator screenOptions={{ headerShown: false, tabBarStyle: TAB_BAR_STYLE, tabBarShowLabel: false }}>
       <Tab.Screen
         name="Home"
         component={WorkerDashboardScreen}
-        options={{
-          tabBarIcon: ({ focused }) => <TabIcon emoji="🏠" label="Home" focused={focused} />,
-        }}
+        options={{ tabBarIcon: ({ focused }) => <TabIcon icon="home" label={t('tabHome', lang)} focused={focused} /> }}
       />
       <Tab.Screen
         name="KYC"
         component={KycVerificationScreen}
-        options={{
-          tabBarIcon: ({ focused }) => <TabIcon emoji="✅" label="Verify" focused={focused} />,
-        }}
+        options={{ tabBarIcon: ({ focused }) => <TabIcon icon="shield-checkmark" label={t('tabVerify', lang)} focused={focused} /> }}
       />
     </Tab.Navigator>
   );
 }
 
 function EmployerTabs() {
+  const lang = useSelector((s: RootState) => s.auth.language);
   return (
-    <Tab.Navigator
-      screenOptions={{
-        headerShown: false,
-        tabBarStyle: TAB_BAR_STYLE,
-        tabBarShowLabel: false,
-      }}
-    >
+    <Tab.Navigator screenOptions={{ headerShown: false, tabBarStyle: TAB_BAR_STYLE, tabBarShowLabel: false }}>
       <Tab.Screen
         name="Home"
         component={EmployerDashboardScreen}
-        options={{
-          tabBarIcon: ({ focused }) => <TabIcon emoji="🏠" label="Home" focused={focused} />,
-        }}
+        options={{ tabBarIcon: ({ focused }) => <TabIcon icon="home" label={t('tabHome', lang)} focused={focused} /> }}
       />
       <Tab.Screen
         name="Post"
         component={PostRequirementScreen}
-        options={{
-          tabBarIcon: ({ focused }) => <TabIcon emoji="➕" label="Post" focused={focused} />,
-        }}
+        options={{ tabBarIcon: ({ focused }) => <TabIcon icon="add-circle" label={t('tabPost', lang)} focused={focused} /> }}
       />
       <Tab.Screen
         name="Verify"
         component={EmployerVerificationScreen}
-        options={{
-          tabBarIcon: ({ focused }) => <TabIcon emoji="🔐" label="Verify" focused={focused} />,
-        }}
+        options={{ tabBarIcon: ({ focused }) => <TabIcon icon="shield-checkmark" label={t('tabVerify', lang)} focused={focused} /> }}
       />
     </Tab.Navigator>
   );

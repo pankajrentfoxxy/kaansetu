@@ -1,26 +1,36 @@
 import React from 'react';
-import { View, StyleSheet, ViewStyle } from 'react-native';
-import { Colors, Spacing } from '../../theme';
+import { View, TouchableOpacity, StyleSheet, ViewStyle } from 'react-native';
+import { Colors, Radius, Shadows, Spacing } from '../../theme';
 
 interface Props {
   children: React.ReactNode;
   style?: ViewStyle;
+  onPress?: () => void;
+  padded?: boolean;
 }
 
-export const Card: React.FC<Props> = ({ children, style }) => (
-  <View style={[styles.card, style]}>{children}</View>
-);
+export const Card: React.FC<Props> = ({ children, style, onPress, padded = true }) => {
+  const content = (
+    <View style={[styles.card, padded && styles.padded, style]}>{children}</View>
+  );
+  if (onPress) {
+    return (
+      <TouchableOpacity onPress={onPress} activeOpacity={0.85}>
+        {content}
+      </TouchableOpacity>
+    );
+  }
+  return content;
+};
 
 const styles = StyleSheet.create({
   card: {
     backgroundColor: Colors.surface,
-    borderRadius: 12,
-    padding: Spacing.lg,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
     marginBottom: Spacing.md,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
+    ...Shadows.sm,
   },
+  padded: { padding: Spacing.lg },
 });

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useGetWorkerProfileQuery, useUpdateHistoryMutation } from '../../store/api/workerApi';
 import { ProgressBar } from '../../components/common/ProgressBar';
 import { Input } from '../../components/common/Input';
@@ -8,14 +9,16 @@ import { DateScrollPicker } from '../../components/common/DateScrollPicker';
 import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
 import { AlertCard } from '../../components/common/AlertCard';
-import { Colors, Spacing, Typography } from '../../theme';
+import { ScreenHeader } from '../../components/common/ScreenHeader';
+import { Icon } from '../../components/common/Icon';
+import { Colors, Radius, Spacing, Typography } from '../../theme';
 
 const LEAVE_REASONS = [
-  { value: 'better_pay', label: 'Better pay' },
-  { value: 'family', label: 'Family reason' },
-  { value: 'relocation', label: 'Relocation' },
-  { value: 'contract_end', label: 'Contract ended' },
-  { value: 'other', label: 'Other' },
+  { value: 'better_pay', label: 'बेहतर वेतन' },
+  { value: 'family', label: 'पारिवारिक कारण' },
+  { value: 'relocation', label: 'जगह बदली' },
+  { value: 'contract_end', label: 'काम पूरा हुआ' },
+  { value: 'other', label: 'अन्य' },
 ];
 
 interface HistoryEntry {
@@ -30,21 +33,13 @@ interface HistoryEntry {
 }
 
 const emptyEntry = (): HistoryEntry => ({
-  employer_name: '',
-  role: '',
-  from_date: '',
-  to_date: '',
-  reference_name: '',
-  reference_mobile: '',
-  leave_reason: '',
-  is_current: false,
+  employer_name: '', role: '', from_date: '', to_date: '',
+  reference_name: '', reference_mobile: '', leave_reason: '', is_current: false,
 });
 
-/** Normalise "2021-6" → "2021-06" and validate YYYY-MM */
 function parseDate(raw: string): string | null {
   const cleaned = raw.trim();
   if (!cleaned) return null;
-  // Accept YYYY-MM or YYYY-MM-DD
   const match = cleaned.match(/^(\d{4})-(\d{1,2})(?:-\d{1,2})?$/);
   if (!match) return null;
   const year = parseInt(match[1], 10);
@@ -61,13 +56,12 @@ export function WorkHistoryScreen({ navigation }: any) {
   const [error, setError] = useState('');
   const [updateHistory, { isLoading }] = useUpdateHistoryMutation();
 
-  // Pre-fill from existing work history
   useEffect(() => {
     if (worker?.work_history?.length && !prefilled) {
       const existing: HistoryEntry[] = worker.work_history.map((h: any) => ({
         employer_name: h.employer_name ?? '',
         role: h.role ?? '',
-        from_date: h.from_date ? h.from_date.slice(0, 7) : '',   // ISO → YYYY-MM
+        from_date: h.from_date ? h.from_date.slice(0, 7) : '',
         to_date: h.to_date ? h.to_date.slice(0, 7) : '',
         reference_name: h.reference_name ?? '',
         reference_mobile: h.reference_mobile ?? '',
@@ -91,21 +85,11 @@ export function WorkHistoryScreen({ navigation }: any) {
     setError('');
     const filled = entries.filter((e) => e.employer_name.trim());
 
-    // Validate each filled entry
     for (let i = 0; i < filled.length; i++) {
       const e = filled[i];
-      if (!e.role.trim()) {
-        setError(`Employer ${i + 1}: Role/designation is required`);
-        return;
-      }
-      if (!parseDate(e.from_date)) {
-        setError(`Employer ${i + 1}: Enter valid From date (e.g. 2021-06)`);
-        return;
-      }
-      if (e.to_date && !parseDate(e.to_date)) {
-        setError(`Employer ${i + 1}: Enter valid To date (e.g. 2023-12) or leave blank`);
-        return;
-      }
+      if (!e.role.trim()) { setError(`नियोक्ता ${i + 1}: पद/काम भरें`); return; }
+      if (!parseDate(e.from_date)) { setError(`नियोक्ता ${i + 1}: सही शुरू तारीख चुनें`); return; }
+      if (e.to_date && !parseDate(e.to_date)) { setError(`नियोक्ता ${i + 1}: सही अंतिम तारीख चुनें या खाली छोड़ें`); return; }
     }
 
     try {
@@ -123,84 +107,49 @@ export function WorkHistoryScreen({ navigation }: any) {
       }).unwrap();
       navigation.navigate('LocationPreferences');
     } catch {
-      setError('Failed to save. Please try again.');
+      setError('सेव नहीं हो सका। फिर कोशिश करें।');
     }
   };
 
   const handleSkip = () => navigation.navigate('LocationPreferences');
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.inner} keyboardShouldPersistTaps="handled">
-        <ProgressBar current={3} total={7} label="Step 3 of 7" />
-        <Text style={styles.title}>Work History</Text>
-        <Text style={styles.subtitle}>पिछले नियोक्ता की जानकारी / Previous employer info</Text>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
+      <ScreenHeader title="काम का अनुभव" subtitle="चरण 3 / 7" onBack={() => navigation.goBack()} />
+      <ScrollView contentContainerStyle={styles.inner} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <ProgressBar current={3} total={7} />
+        <Text style={styles.subtitle}>पिछले नियोक्ता की जानकारी दें</Text>
         {error ? <AlertCard type="danger" message={error} /> : null}
 
         {entries.map((entry, i) => (
           <Card key={i} style={styles.card}>
-            <Text style={styles.cardTitle}>Employer {i + 1}{i === 0 ? ' *' : ' (Optional)'}</Text>
+            <View style={styles.cardHead}>
+              <View style={styles.cardNum}><Text style={styles.cardNumText}>{i + 1}</Text></View>
+              <Text style={styles.cardTitle}>नियोक्ता {i + 1}{i === 0 ? '' : ' (वैकल्पिक)'}</Text>
+            </View>
 
-            <Input
-              label="Company / Employer Name *"
-              value={entry.employer_name}
-              onChangeText={(v) => update(i, 'employer_name', v)}
-              placeholder="e.g. Sharma Household / ABC Pvt Ltd"
-            />
-            <Input
-              label="Your Role / Designation *"
-              value={entry.role}
-              onChangeText={(v) => update(i, 'role', v)}
-              placeholder="e.g. Driver, Cook, Security Guard"
-            />
-            <DateScrollPicker
-              label="From Date *"
-              value={entry.from_date}
-              onChange={(v) => update(i, 'from_date', v)}
-              monthOnly
-              maxYear={new Date().getFullYear()}
-            />
-            <DateScrollPicker
-              label="To Date (leave blank if current job)"
-              value={entry.to_date}
-              onChange={(v) => update(i, 'to_date', v)}
-              monthOnly
-              maxYear={new Date().getFullYear()}
-            />
-            <Input
-              label="Reference Name (Optional)"
-              value={entry.reference_name}
-              onChangeText={(v) => update(i, 'reference_name', v)}
-              placeholder="Manager / Owner name"
-            />
-            <Input
-              label="Reference Mobile (Optional)"
-              value={entry.reference_mobile}
-              onChangeText={(v) => update(i, 'reference_mobile', v)}
-              keyboardType="phone-pad"
-              placeholder="10-digit mobile"
-              maxLength={10}
-            />
-            <Text style={styles.label}>Reason for leaving</Text>
-            <ChipGroup
-              options={LEAVE_REASONS}
-              selected={[entry.leave_reason]}
-              onToggle={(v) => update(i, 'leave_reason', v)}
-              multiSelect={false}
-            />
+            <Input label="कंपनी / नियोक्ता का नाम" value={entry.employer_name} onChangeText={(v) => update(i, 'employer_name', v)} placeholder="जैसे शर्मा परिवार / ABC Pvt Ltd" icon="business-outline" />
+            <Input label="आपका पद / काम" value={entry.role} onChangeText={(v) => update(i, 'role', v)} placeholder="जैसे ड्राइवर, रसोइया, गार्ड" icon="briefcase-outline" />
+            <DateScrollPicker label="शुरू तारीख" value={entry.from_date} onChange={(v) => update(i, 'from_date', v)} monthOnly maxYear={new Date().getFullYear()} />
+            <DateScrollPicker label="अंतिम तारीख (अभी काम कर रहे हैं तो खाली छोड़ें)" value={entry.to_date} onChange={(v) => update(i, 'to_date', v)} monthOnly maxYear={new Date().getFullYear()} />
+            <Input label="संदर्भ व्यक्ति का नाम (वैकल्पिक)" value={entry.reference_name} onChangeText={(v) => update(i, 'reference_name', v)} placeholder="मैनेजर / मालिक का नाम" icon="person-outline" />
+            <Input label="संदर्भ मोबाइल (वैकल्पिक)" value={entry.reference_mobile} onChangeText={(v) => update(i, 'reference_mobile', v)} keyboardType="phone-pad" placeholder="10 अंकों का नंबर" maxLength={10} icon="call-outline" />
+            <Text style={styles.label}>छोड़ने का कारण</Text>
+            <ChipGroup options={LEAVE_REASONS} selected={[entry.leave_reason]} onToggle={(v) => update(i, 'leave_reason', v)} multiSelect={false} />
           </Card>
         ))}
 
         {entries.length < 3 && (
-          <TouchableOpacity style={styles.addBtn} onPress={() => setEntries((p) => [...p, emptyEntry()])}>
-            <Text style={styles.addText}>+ Add Another Employer (Optional)</Text>
+          <TouchableOpacity style={styles.addBtn} onPress={() => setEntries((p) => [...p, emptyEntry()])} activeOpacity={0.8}>
+            <Icon name="add" size={20} color={Colors.primary} />
+            <Text style={styles.addText}>एक और नियोक्ता जोड़ें</Text>
           </TouchableOpacity>
         )}
 
-        <Button title="Save & Continue" onPress={handleSave} loading={isLoading} style={styles.btn} />
+        <Button title="सेव करें और आगे बढ़ें" onPress={handleSave} loading={isLoading} icon="arrow-forward" style={styles.btn} />
 
         <TouchableOpacity style={styles.skipBtn} onPress={handleSkip}>
-          <Text style={styles.skipText}>Skip — No work history / Fresher</Text>
+          <Text style={styles.skipText}>कोई अनुभव नहीं — छोड़ें</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -209,18 +158,20 @@ export function WorkHistoryScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
-  inner: { padding: Spacing.xxl },
-  title: { ...Typography.h1, color: Colors.textPrimary, marginBottom: 4 },
+  inner: { padding: Spacing.xl, paddingBottom: Spacing.xxxl },
   subtitle: { ...Typography.body, color: Colors.textSecondary, marginBottom: Spacing.lg },
   card: { marginBottom: Spacing.lg },
-  cardTitle: { ...Typography.h3, color: Colors.primary, marginBottom: Spacing.md },
-  label: { ...Typography.caption, color: Colors.textSecondary, marginBottom: Spacing.xs, marginTop: Spacing.sm },
+  cardHead: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: Spacing.md },
+  cardNum: { width: 28, height: 28, borderRadius: 14, backgroundColor: Colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
+  cardNumText: { ...Typography.captionStrong, color: Colors.primary, fontWeight: '700' },
+  cardTitle: { ...Typography.h3, color: Colors.textPrimary },
+  label: { ...Typography.captionStrong, color: Colors.textSecondary, marginBottom: Spacing.sm, marginTop: Spacing.sm },
   addBtn: {
-    paddingVertical: Spacing.md, alignItems: 'center',
-    borderWidth: 1, borderColor: Colors.primary, borderRadius: 8, borderStyle: 'dashed',
-    marginBottom: Spacing.md,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    paddingVertical: Spacing.md, borderWidth: 1.5, borderColor: Colors.primary, borderRadius: Radius.md,
+    borderStyle: 'dashed', marginBottom: Spacing.lg,
   },
-  addText: { ...Typography.body, color: Colors.primary },
+  addText: { ...Typography.bodyStrong, color: Colors.primary },
   btn: { marginTop: Spacing.sm },
   skipBtn: { alignItems: 'center', paddingVertical: Spacing.lg },
   skipText: { ...Typography.body, color: Colors.textSecondary, textDecorationLine: 'underline' },

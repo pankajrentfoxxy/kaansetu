@@ -155,10 +155,25 @@ employerRoutes.post('/shortlist', async (req: AuthRequest, res, next) => {
     });
     try {
       const worker = await prisma.worker.findUnique({ where: { id: worker_id }, include: { user: true } });
+      const requirement = requirement_id
+        ? await prisma.requirement.findUnique({ where: { id: requirement_id } })
+        : null;
+      const role = requirement?.job_type?.replace(/_/g, ' ') ?? 'a job';
+      // Persist an in-app notification so the worker is informed even without an
+      // FCM token (e.g. on web). Push is best-effort on top of this.
+      await prisma.notification.create({
+        data: {
+          type: 'WORKER_SHORTLISTED',
+          worker_id,
+          title: 'You have been shortlisted!',
+          body: `${employer.company_name} shortlisted you for ${role}. They may send you an offer soon.`,
+          data: { employer_id: employer.id, requirement_id: requirement_id ?? null },
+        },
+      });
       if (worker?.user.fcm_token) {
         await fcmService.sendTemplate(worker.user.fcm_token, 'WORKER_NEW_JOB_MATCH', worker.id, true);
       }
-    } catch { /* FCM failure should not fail the shortlist */ }
+    } catch { /* notification/FCM failure should not fail the shortlist */ }
     res.status(201).json(shortlist);
   } catch (err) { next(err); }
 });
@@ -179,20 +194,40 @@ employerRoutes.post('/hire', async (req: AuthRequest, res, next) => {
     const employer = await getEmployer(req.user!.id);
     const { worker_id, requirement_id, offer_salary, start_date } = req.body;
 
+    if (!worker_id) { res.status(422).json({ error: 'worker_id is required' }); return; }
+    if (!offer_salary || isNaN(Number(offer_salary))) { res.status(422).json({ error: 'offer_salary must be a number' }); return; }
+    if (!start_date) { res.status(422).json({ error: 'start_date is required' }); return; }
+
     const worker = await prisma.worker.findUniqueOrThrow({
       where: { id: worker_id },
       include: { location: true },
     });
-    const req_ = await prisma.requirement.findFirstOrThrow({
-      where: { id: requirement_id, employer_id: employer.id },
-    });
+
+    // requirement_id is optional — some hires may come from direct shortlist without a requirement
+    let req_: any = null;
+    if (requirement_id) {
+      req_ = await prisma.requirement.findFirst({
+        where: { id: requirement_id, employer_id: employer.id },
+      });
+    }
+    // If requirement_id given but not found, use first active requirement
+    if (!req_ && requirement_id) {
+      req_ = await prisma.requirement.findFirst({ where: { employer_id: employer.id, status: 'ACTIVE' } });
+    }
+    // If still no requirement, create without it — use a placeholder
+    const finalRequirementId = req_?.id ?? requirement_id;
+
+    if (!finalRequirementId) {
+      res.status(422).json({ error: 'No active requirement found for this employer. Please post a requirement first.' });
+      return;
+    }
 
     const hire = await prisma.hire.create({
       data: {
         employer_id: employer.id,
         worker_id,
-        requirement_id,
-        offer_salary,
+        requirement_id: finalRequirementId,
+        offer_salary: Number(offer_salary),
         start_date: new Date(start_date),
         status: 'OFFER_SENT',
       },
@@ -205,8 +240,8 @@ employerRoutes.post('/hire', async (req: AuthRequest, res, next) => {
         id: hire.id,
         workerName: worker.full_name,
         companyName: employer.company_name,
-        role: req_.job_type,
-        salary: offer_salary,
+        role: req_?.job_type ?? 'General',
+        salary: Number(offer_salary),
         startDate: new Date(start_date),
         city: employer.city ?? '',
       });
@@ -233,10 +268,73 @@ employerRoutes.get('/hires', async (req: AuthRequest, res, next) => {
     const employer = await getEmployer(req.user!.id);
     const hires = await prisma.hire.findMany({
       where: { employer_id: employer.id },
-      include: { worker: true, requirement: true },
+      include: {
+        worker: { include: { skills: true, location: true } },
+        requirement: true,
+      },
       orderBy: { created_at: 'desc' },
     });
     res.json(hires);
+  } catch (err) { next(err); }
+});
+
+// Employer e-sign: update hire status to EMPLOYER_SIGNED
+employerRoutes.put('/hire/:hireId/esign', async (req: AuthRequest, res, next) => {
+  try {
+    const employer = await getEmployer(req.user!.id);
+    const { employer_signature_name } = req.body;
+    const hire = await prisma.hire.findFirstOrThrow({
+      where: { id: req.params.hireId, employer_id: employer.id },
+      include: { worker: true, requirement: true },
+    });
+    const updated = await prisma.hire.update({
+      where: { id: hire.id },
+      data: {
+        esign_employer_at: new Date(),
+        status: 'EMPLOYER_SIGNED',
+      },
+    });
+    // Notify worker
+    try {
+      const workerUser = await prisma.user.findUnique({ where: { id: hire.worker.user_id } });
+      if (workerUser?.fcm_token) {
+        await fcmService.sendTemplate(workerUser.fcm_token, 'HIRE_CONFIRMED', hire.worker.id, true);
+      }
+      await prisma.notification.create({
+        data: {
+          type: 'OFFER_LETTER_READY',
+          worker_id: hire.worker_id,
+          title: 'Job Offer Received!',
+          body: `${employer.company_name} has sent you an offer for ${hire.requirement?.job_type?.replace(/_/g, ' ')}. Tap to review and accept.`,
+          data: { hire_id: hire.id },
+        },
+      });
+    } catch { /* ignore notification errors */ }
+    res.json({ ...updated, employer_signature_name });
+  } catch (err) { next(err); }
+});
+
+// Get applications (workers who applied via express-interest)
+employerRoutes.get('/applications', async (req: AuthRequest, res, next) => {
+  try {
+    const employer = await getEmployer(req.user!.id);
+    const notifications = await prisma.notification.findMany({
+      where: { employer_id: employer.id, type: 'WORKER_APPLIED' },
+      orderBy: { created_at: 'desc' },
+      take: 50,
+    });
+    // Enrich with worker data
+    const enriched = await Promise.all(notifications.map(async (n) => {
+      try {
+        const data = n.data as any;
+        const worker = data?.worker_id ? await prisma.worker.findUnique({
+          where: { id: data.worker_id },
+          include: { skills: true, location: true, verifications: true },
+        }) : null;
+        return { ...n, worker };
+      } catch { return { ...n, worker: null }; }
+    }));
+    res.json(enriched.filter((n) => n.worker));
   } catch (err) { next(err); }
 });
 

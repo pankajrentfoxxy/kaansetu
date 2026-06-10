@@ -1,23 +1,15 @@
-﻿import React, { useState } from 'react';
-import {
-  View, Text, StyleSheet, SafeAreaView, ScrollView,
-  TouchableOpacity, TextInput, Switch,
-} from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { usePostRequirementMutation } from '../../store/api/employerApi';
-import { Colors } from '../../theme';
-
-const JOB_OPTIONS = [
-  { value: 'driver', label: 'Driver', icon: 'D' },
-  { value: 'security_guard', label: 'Security', icon: 'S' },
-  { value: 'cook', label: 'Cook', icon: 'C' },
-  { value: 'housekeeper', label: 'Housekeeper', icon: 'H' },
-  { value: 'delivery', label: 'Delivery', icon: 'D' },
-  { value: 'electrician', label: 'Electrician', icon: 'E' },
-  { value: 'plumber', label: 'Plumber', icon: 'P' },
-  { value: 'peon', label: 'Peon', icon: 'P' },
-  { value: 'sweeper', label: 'Sweeper', icon: 'S' },
-  { value: 'helper', label: 'Helper', icon: 'H' },
-];
+import { Input } from '../../components/common/Input';
+import { Button } from '../../components/common/Button';
+import { AlertCard } from '../../components/common/AlertCard';
+import { ScreenHeader } from '../../components/common/ScreenHeader';
+import { JobIcon } from '../../components/common/JobIcon';
+import { ToggleSwitch } from '../../components/common/ToggleSwitch';
+import { Icon } from '../../components/common/Icon';
+import { Colors, Radius, Spacing, Typography, JOB_TYPES, getJobMeta } from '../../theme';
 
 const EXP_OPTIONS = [
   { value: '0', label: 'Any' },
@@ -43,7 +35,7 @@ export function PostRequirementScreen({ navigation }: any) {
   const handlePost = async () => {
     if (!jobType) { setError('Please select a job type'); return; }
     if (!salaryMin || !salaryMax) { setError('Please enter salary range'); return; }
-    if (Number(salaryMax) < Number(salaryMin)) { setError('Max salary must be >= min salary'); return; }
+    if (Number(salaryMax) < Number(salaryMin)) { setError('Max salary must be ≥ min salary'); return; }
     if (!panIndia && !city) { setError('Enter a city or enable Pan India'); return; }
     setError('');
     try {
@@ -65,131 +57,108 @@ export function PostRequirementScreen({ navigation }: any) {
   };
 
   return (
-    <SafeAreaView style={st.container}>
-      <ScrollView contentContainerStyle={st.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-        <View style={st.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={st.backBtn}>
-            <Text style={st.backText}>back</Text>
-          </TouchableOpacity>
-          <View>
-            <Text style={st.title}>Post Requirement</Text>
-            <Text style={st.titleSub}>Post a new job need</Text>
-          </View>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <ScreenHeader title="Post Requirement" subtitle="Find verified workers" onBack={() => navigation.goBack()} />
+      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        {error ? <AlertCard type="danger" message={error} /> : null}
+
+        <Text style={styles.sectionTitle}>Job type</Text>
+        <View style={styles.jobGrid}>
+          {JOB_TYPES.map((type) => {
+            const meta = getJobMeta(type);
+            const active = jobType === type;
+            return (
+              <TouchableOpacity key={type} style={[styles.jobTile, active && styles.jobTileActive]} onPress={() => setJobType(type)} activeOpacity={0.85}>
+                <JobIcon jobType={type} size={38} />
+                <Text style={[styles.jobTileLabel, active && styles.jobTileLabelActive]} numberOfLines={1}>{meta.labelEn}</Text>
+                {active && <View style={styles.tileCheck}><Icon name="checkmark" size={10} color="#fff" /></View>}
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
-        {error ? <View style={st.errorBox}><Text style={st.errorText}>{error}</Text></View> : null}
-
-        <Text style={st.sectionTitle}>Job Type</Text>
-        <View style={st.jobGrid}>
-          {JOB_OPTIONS.map((opt) => (
-            <TouchableOpacity
-              key={opt.value}
-              style={[st.jobChip, jobType === opt.value && st.jobChipActive]}
-              onPress={() => setJobType(opt.value)}
-            >
-              <Text style={[st.jobChipLabel, jobType === opt.value && st.jobChipLabelActive]}>{opt.label}</Text>
-            </TouchableOpacity>
-          ))}
+        <Text style={styles.sectionTitle}>Salary (₹/month)</Text>
+        <View style={styles.row2}>
+          <View style={styles.flex1}><Input label="Minimum" value={salaryMin} onChangeText={setSalaryMin} placeholder="15000" keyboardType="number-pad" icon="cash-outline" /></View>
+          <View style={styles.flex1}><Input label="Maximum" value={salaryMax} onChangeText={setSalaryMax} placeholder="25000" keyboardType="number-pad" icon="cash-outline" /></View>
         </View>
 
-        <Text style={st.sectionTitle}>Salary (Rs/month)</Text>
-        <View style={st.row2}>
-          <View style={st.field}>
-            <Text style={st.fieldLabel}>Minimum</Text>
-            <TextInput style={st.input} value={salaryMin} onChangeText={setSalaryMin} placeholder="15000" placeholderTextColor={Colors.textTertiary} keyboardType="number-pad" />
+        <Text style={styles.sectionTitle}>Location</Text>
+        <View style={styles.toggleCard}>
+          <Icon name="globe-outline" size={22} color={Colors.textSecondary} style={styles.toggleIcon} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.toggleLabel}>Pan India</Text>
+            <Text style={styles.toggleSub}>All cities across India</Text>
           </View>
-          <View style={st.field}>
-            <Text style={st.fieldLabel}>Maximum</Text>
-            <TextInput style={st.input} value={salaryMax} onChangeText={setSalaryMax} placeholder="25000" placeholderTextColor={Colors.textTertiary} keyboardType="number-pad" />
-          </View>
-        </View>
-
-        <Text style={st.sectionTitle}>Location</Text>
-        <View style={st.toggleRow}>
-          <View style={st.toggleInfo}>
-            <Text style={st.toggleLabel}>Pan India</Text>
-            <Text style={st.toggleSub}>All cities across India</Text>
-          </View>
-          <Switch value={panIndia} onValueChange={setPanIndia} trackColor={{ false: '#D1D5DB', true: Colors.primary }} thumbColor="#fff" />
+          <ToggleSwitch value={panIndia} onToggle={() => setPanIndia(!panIndia)} onColor={Colors.primary} />
         </View>
         {!panIndia && (
-          <View style={st.row2}>
-            <View style={st.field}>
-              <Text style={st.fieldLabel}>City</Text>
-              <TextInput style={st.input} value={city} onChangeText={setCity} placeholder="e.g. Delhi" placeholderTextColor={Colors.textTertiary} />
-            </View>
-            <View style={st.field}>
-              <Text style={st.fieldLabel}>Pincode</Text>
-              <TextInput style={st.input} value={pincode} onChangeText={setPincode} placeholder="110001" placeholderTextColor={Colors.textTertiary} keyboardType="number-pad" maxLength={6} />
-            </View>
+          <View style={styles.row2}>
+            <View style={styles.flex1}><Input label="City" value={city} onChangeText={setCity} placeholder="e.g. Delhi" icon="business-outline" /></View>
+            <View style={styles.flex1}><Input label="Pincode" value={pincode} onChangeText={setPincode} placeholder="110001" keyboardType="number-pad" maxLength={6} icon="mail-outline" /></View>
           </View>
         )}
 
-        <Text style={st.sectionTitle}>Min Experience</Text>
-        <View style={st.chipRow}>
-          {EXP_OPTIONS.map((opt) => (
-            <TouchableOpacity key={opt.value} style={[st.chip, experience === opt.value && st.chipActive]} onPress={() => setExperience(opt.value)}>
-              <Text style={[st.chipLabel, experience === opt.value && st.chipLabelActive]}>{opt.label}</Text>
-            </TouchableOpacity>
-          ))}
+        <Text style={styles.sectionTitle}>Minimum experience</Text>
+        <View style={styles.chipRow}>
+          {EXP_OPTIONS.map((opt) => {
+            const active = experience === opt.value;
+            return (
+              <TouchableOpacity key={opt.value} style={[styles.chip, active && styles.chipActive]} onPress={() => setExperience(opt.value)} activeOpacity={0.85}>
+                <Text style={[styles.chipLabel, active && styles.chipLabelActive]}>{opt.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
-        <Text style={st.sectionTitle}>Openings</Text>
-        <View style={st.chipRow}>
-          {['1', '2', '3', '5', '10'].map((n) => (
-            <TouchableOpacity key={n} style={[st.chip, openings === n && st.chipActive]} onPress={() => setOpenings(n)}>
-              <Text style={[st.chipLabel, openings === n && st.chipLabelActive]}>{n}</Text>
-            </TouchableOpacity>
-          ))}
+        <Text style={styles.sectionTitle}>Openings</Text>
+        <View style={styles.chipRow}>
+          {['1', '2', '3', '5', '10'].map((n) => {
+            const active = openings === n;
+            return (
+              <TouchableOpacity key={n} style={[styles.chip, active && styles.chipActive]} onPress={() => setOpenings(n)} activeOpacity={0.85}>
+                <Text style={[styles.chipLabel, active && styles.chipLabelActive]}>{n}</Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
-        <View style={st.toggleRow}>
-          <View style={st.toggleInfo}>
-            <Text style={st.toggleLabel}>Live-in Required</Text>
-            <Text style={st.toggleSub}>Worker must stay at premises</Text>
+        <View style={[styles.toggleCard, { marginTop: Spacing.lg }]}>
+          <Icon name="bed-outline" size={22} color={Colors.textSecondary} style={styles.toggleIcon} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.toggleLabel}>Live-in required</Text>
+            <Text style={styles.toggleSub}>Worker must stay at premises</Text>
           </View>
-          <Switch value={liveIn} onValueChange={setLiveIn} trackColor={{ false: '#D1D5DB', true: Colors.primary }} thumbColor="#fff" />
+          <ToggleSwitch value={liveIn} onToggle={() => setLiveIn(!liveIn)} onColor={Colors.primary} />
         </View>
 
-        <TouchableOpacity style={[st.postBtn, isLoading && st.postBtnDisabled]} onPress={handlePost} disabled={isLoading} activeOpacity={0.85}>
-          <Text style={st.postBtnText}>{isLoading ? 'Posting...' : 'Find Matching Workers'}</Text>
-        </TouchableOpacity>
-        <View style={{ height: 40 }} />
+        <Button title="Find Matching Workers" onPress={handlePost} loading={isLoading} icon="search" style={styles.postBtn} />
+        <View style={{ height: Spacing.xl }} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-const st = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F0F4F8' },
-  scroll: { padding: 16 },
-  header: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20 },
-  backBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
-  backText: { fontSize: 13, color: Colors.primary, fontWeight: '700' },
-  title: { fontSize: 22, fontWeight: '800', color: '#1A1A2E' },
-  titleSub: { fontSize: 13, color: Colors.textSecondary },
-  errorBox: { backgroundColor: '#FEF2F2', borderRadius: 10, padding: 12, marginBottom: 16, borderLeftWidth: 4, borderLeftColor: '#EF4444' },
-  errorText: { fontSize: 14, color: '#B91C1C', fontWeight: '600' },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: '#1A1A2E', marginTop: 20, marginBottom: 10 },
-  jobGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
-  jobChip: { backgroundColor: '#fff', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14, borderWidth: 1.5, borderColor: '#E2E8F0' },
-  jobChipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  jobChipLabel: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary },
-  jobChipLabelActive: { color: '#fff' },
-  row2: { flexDirection: 'row', gap: 12, marginBottom: 4 },
-  field: { flex: 1 },
-  fieldLabel: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary, marginBottom: 6 },
-  input: { backgroundColor: '#fff', borderRadius: 10, paddingHorizontal: 14, height: 48, fontSize: 16, color: Colors.textPrimary, borderWidth: 1.5, borderColor: '#E2E8F0' },
-  toggleRow: { backgroundColor: '#fff', borderRadius: 12, padding: 14, flexDirection: 'row', alignItems: 'center', marginBottom: 10, borderWidth: 1, borderColor: '#E2E8F0' },
-  toggleInfo: { flex: 1 },
-  toggleLabel: { fontSize: 15, fontWeight: '600', color: Colors.textPrimary },
-  toggleSub: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
-  chip: { backgroundColor: '#fff', borderRadius: 8, paddingHorizontal: 16, paddingVertical: 8, borderWidth: 1.5, borderColor: '#E2E8F0' },
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: Colors.background },
+  scroll: { padding: Spacing.lg },
+  sectionTitle: { ...Typography.h3, color: Colors.textPrimary, marginTop: Spacing.lg, marginBottom: Spacing.md },
+  jobGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+  jobTile: { width: '23.5%', backgroundColor: Colors.surface, borderRadius: Radius.md, paddingVertical: 10, paddingHorizontal: 2, alignItems: 'center', borderWidth: 1.5, borderColor: Colors.border, marginBottom: 8 },
+  jobTileActive: { borderColor: Colors.primary, backgroundColor: Colors.primaryLight },
+  jobTileLabel: { ...Typography.tiny, fontSize: 10, color: Colors.textSecondary, marginTop: 5, fontWeight: '600' },
+  jobTileLabelActive: { color: Colors.primaryText },
+  tileCheck: { position: 'absolute', top: 4, right: 4, width: 16, height: 16, borderRadius: 8, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center' },
+  row2: { flexDirection: 'row', gap: 12 },
+  flex1: { flex: 1 },
+  toggleCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.surface, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border, paddingVertical: Spacing.md, paddingHorizontal: Spacing.lg, marginBottom: Spacing.md },
+  toggleIcon: { marginRight: Spacing.md },
+  toggleLabel: { ...Typography.bodyStrong, color: Colors.textPrimary },
+  toggleSub: { ...Typography.caption, color: Colors.textSecondary, marginTop: 1 },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: { backgroundColor: Colors.surface, borderRadius: Radius.md, paddingHorizontal: 18, paddingVertical: 10, borderWidth: 1.5, borderColor: Colors.border },
   chipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  chipLabel: { fontSize: 14, fontWeight: '600', color: Colors.textSecondary },
+  chipLabel: { ...Typography.bodyStrong, color: Colors.textSecondary },
   chipLabelActive: { color: '#fff' },
-  postBtn: { backgroundColor: Colors.primary, borderRadius: 16, padding: 18, alignItems: 'center', marginTop: 24 },
-  postBtnDisabled: { opacity: 0.6 },
-  postBtnText: { color: '#fff', fontSize: 17, fontWeight: '800' },
+  postBtn: { marginTop: Spacing.xxl },
 });

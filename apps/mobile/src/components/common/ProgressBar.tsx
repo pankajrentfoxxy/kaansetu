@@ -1,37 +1,33 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { Colors, Spacing, Typography } from '../../theme';
+import { Colors, Radius, Spacing, Typography } from '../../theme';
 
 interface Props {
   current: number;
   total: number;
   label?: string;
+  color?: string;
+  trackColor?: string;
+  height?: number;
 }
 
-export const ProgressBar: React.FC<Props> = ({ current, total, label }) => {
-  const pct = (current / total) * 100;
+export const ProgressBar: React.FC<Props> = ({
+  current, total, label, color = Colors.accent, trackColor = Colors.border, height = 8,
+}) => {
+  const pct = total > 0 ? Math.min(100, Math.round((current / total) * 100)) : 0;
   return (
     <View style={styles.container}>
-      <View style={styles.track}>
-        <View style={[styles.fill, { width: `${pct}%` }]} />
+      <View style={[styles.track, { height, borderRadius: height / 2, backgroundColor: trackColor }]}>
+        <View style={[styles.fill, { width: `${pct}%`, backgroundColor: color, borderRadius: height / 2 }]} />
       </View>
-      <Text style={styles.label}>{label ?? `${current}/${total}`}</Text>
+      {label && <Text style={styles.label}>{label}</Text>}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { marginBottom: Spacing.lg },
-  track: {
-    height: 6,
-    backgroundColor: Colors.border,
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  fill: {
-    height: '100%',
-    backgroundColor: Colors.primary,
-    borderRadius: 3,
-  },
+  container: { marginBottom: Spacing.sm },
+  track: { width: '100%', overflow: 'hidden' },
+  fill: { height: '100%' },
   label: { ...Typography.tiny, color: Colors.textTertiary, marginTop: 4, textAlign: 'right' },
 });

@@ -1,27 +1,18 @@
 import React, { useState } from 'react';
-import {
-  View, Text, StyleSheet, SafeAreaView, ScrollView,
-  TouchableOpacity,
-} from 'react-native';
-import { useSelector } from 'react-redux';
-import { RootState } from '../../store';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useGetEmployerProfileQuery } from '../../store/api/employerApi';
-import { t } from '../../utils/i18n';
-import { Colors, Spacing, Typography } from '../../theme';
+import { Colors, Radius, Shadows, Spacing, Typography } from '../../theme';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
+import { Button } from '../../components/common/Button';
+import { AlertCard } from '../../components/common/AlertCard';
+import { ScreenHeader } from '../../components/common/ScreenHeader';
+import { Icon } from '../../components/common/Icon';
+import { SecureStore } from '../../utils/storage';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://gentle-cooperation-production-ca4c.up.railway.app';
 
-type Step = 'BUSINESS' | 'PAN' | 'DONE';
-
-const STEPS = [
-  { id: 'BUSINESS', icon: '🏢', title: 'व्यवसाय जाँच', sub: 'Business Verify' },
-  { id: 'PAN',      icon: '💳', title: 'PAN जाँच',    sub: 'PAN Verify' },
-  { id: 'DONE',     icon: '✅', title: 'पूरा हुआ',    sub: 'All Done' },
-];
-
 export function EmployerVerificationScreen({ navigation }: any) {
-  const lang = useSelector((s: RootState) => s.auth.language);
   const { data: employer, isLoading, refetch } = useGetEmployerProfileQuery();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -33,15 +24,10 @@ export function EmployerVerificationScreen({ navigation }: any) {
   const hasPan = verifications.some((v: any) => v.check_type === 'PAN' && v.status === 'VERIFIED');
   const isFullyVerified = hasBusiness && hasPan;
 
-  const getToken = async () => {
-    const { SecureStore } = await import('../../utils/storage');
-    return await SecureStore.getItemAsync('access_token');
-  };
-
   const mockVerify = async (type: 'business' | 'pan') => {
     setError(''); setLoading(true);
     try {
-      const token = await getToken();
+      const token = await SecureStore.getItemAsync('access_token');
       const res = await fetch(`${BASE_URL}/api/v1/employer/kyc/mock-${type}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -50,114 +36,80 @@ export function EmployerVerificationScreen({ navigation }: any) {
       if (!res.ok) throw new Error(data.message ?? 'Failed');
       await refetch();
     } catch (e: any) {
-      setError(e.message ?? 'कुछ गलत हुआ / Something went wrong');
+      setError(e.message ?? 'Something went wrong');
     } finally { setLoading(false); }
   };
 
   if (isFullyVerified) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.successBox}>
-          <Text style={styles.successIcon}>🎉</Text>
-          <Text style={styles.successTitle}>सत्यापन पूरा हुआ!</Text>
-          <Text style={styles.successSub}>Business Verification Complete</Text>
-          <TouchableOpacity style={styles.doneBtn} onPress={() => navigation.navigate('EmployerTabs')}>
-            <Text style={styles.doneBtnText}>डैशबोर्ड पर जाएं →</Text>
-          </TouchableOpacity>
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+        <View style={styles.successWrap}>
+          <View style={styles.successIcon}><Icon name="checkmark-circle" size={72} color={Colors.success} /></View>
+          <Text style={styles.successTitle}>Verification complete!</Text>
+          <Text style={styles.successSub}>Your business is now verified. You can post jobs and hire workers.</Text>
+          <Button title="Go to Dashboard" onPress={() => navigation.navigate('EmployerTabs')} icon="arrow-forward" style={styles.successBtn} />
         </View>
       </SafeAreaView>
     );
   }
 
+  const steps = [
+    {
+      id: 'business', icon: 'business', title: 'Business Verification',
+      desc: 'Your business name and address will be verified.',
+      done: hasBusiness, locked: false,
+    },
+    {
+      id: 'pan', icon: 'card', title: 'PAN Verification',
+      desc: 'Your PAN card will be verified.',
+      done: hasPan, locked: !hasBusiness,
+    },
+  ];
+
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.inner}>
-        <Text style={styles.title}>🏢 {t('empVerifyTitle', lang)}</Text>
-        <Text style={styles.subtitle}>{t('empVerifySubtitle', lang)}</Text>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <ScreenHeader title="Business Verification" subtitle="Verify your business to start hiring" onBack={() => navigation.goBack()} />
+      <ScrollView contentContainerStyle={styles.inner} showsVerticalScrollIndicator={false}>
+        {error ? <AlertCard type="danger" message={error} /> : null}
 
-        {error ? (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>⚠️ {error}</Text>
-          </View>
-        ) : null}
-
-        {/* Progress steps */}
-        <View style={styles.stepsRow}>
-          {STEPS.slice(0, 2).map((s, i) => {
-            const done = s.id === 'BUSINESS' ? hasBusiness : hasPan;
-            return (
-              <View key={s.id} style={styles.stepItem}>
-                <View style={[styles.stepCircle, done && styles.stepDone]}>
-                  <Text style={styles.stepCircleText}>{done ? '✓' : `${i + 1}`}</Text>
+        {steps.map((step, index) => {
+          const active = !step.done && !step.locked;
+          const isLast = index === steps.length - 1;
+          return (
+            <View key={step.id} style={styles.stepRow}>
+              <View style={styles.timeline}>
+                <View style={[styles.dot, step.done && styles.dotDone, active && styles.dotActive]}>
+                  <Icon
+                    name={step.done ? 'checkmark' : step.locked ? 'lock-closed' : step.icon}
+                    size={18}
+                    color={step.done ? '#fff' : active ? Colors.primary : Colors.textTertiary}
+                  />
                 </View>
-                <Text style={styles.stepLabel}>{s.icon} {s.title}</Text>
-                <Text style={styles.stepSub}>{s.sub}</Text>
+                {!isLast && <View style={[styles.connector, step.done && styles.connectorDone]} />}
               </View>
-            );
-          })}
-        </View>
 
-        {/* Step cards */}
-        {/* Business Verification */}
-        <View style={[styles.card, hasBusiness && styles.cardDone]}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.cardIcon}>🏢</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.cardTitle}>व्यवसाय सत्यापन</Text>
-              <Text style={styles.cardSub}>Business Verification</Text>
+              <View style={[styles.card, active && styles.cardActive, step.done && styles.cardDone]}>
+                <View style={styles.cardHead}>
+                  <Text style={styles.cardTitle}>{step.title}</Text>
+                  {step.done && <View style={styles.doneTag}><Text style={styles.doneTagText}>Done</Text></View>}
+                  {step.locked && <View style={styles.lockTag}><Text style={styles.lockTagText}>Locked</Text></View>}
+                </View>
+                {active && (
+                  <>
+                    <Text style={styles.cardDesc}>{step.desc}</Text>
+                    <Button
+                      title={step.id === 'business' ? 'Verify Business' : 'Verify PAN'}
+                      onPress={() => mockVerify(step.id as 'business' | 'pan')}
+                      loading={loading}
+                      icon="shield-checkmark"
+                      style={styles.cardBtn}
+                    />
+                  </>
+                )}
+              </View>
             </View>
-            {hasBusiness && <Text style={styles.doneTag}>✅ Done</Text>}
-          </View>
-          {!hasBusiness && (
-            <>
-              <Text style={styles.cardDesc}>
-                आपके व्यवसाय का नाम और पता जाँचा जाएगा।{'\n'}
-                Your business name & address will be verified.
-              </Text>
-              <TouchableOpacity
-                style={[styles.actionBtn, loading && styles.actionBtnDisabled]}
-                onPress={() => mockVerify('business')}
-                disabled={loading}
-              >
-                <Text style={styles.actionBtnText}>
-                  {loading ? 'जाँच हो रही है...' : '🔍 व्यवसाय जाँचें / Verify Business'}
-                </Text>
-              </TouchableOpacity>
-            </>
-          )}
-        </View>
-
-        {/* PAN Verification */}
-        <View style={[styles.card, hasPan && styles.cardDone, !hasBusiness && styles.cardLocked]}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.cardIcon}>💳</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.cardTitle}>PAN सत्यापन</Text>
-              <Text style={styles.cardSub}>PAN Card Verification</Text>
-            </View>
-            {hasPan && <Text style={styles.doneTag}>✅ Done</Text>}
-            {!hasBusiness && <Text style={styles.lockedTag}>🔒 Locked</Text>}
-          </View>
-          {hasBusiness && !hasPan && (
-            <>
-              <Text style={styles.cardDesc}>
-                आपका PAN कार्ड सत्यापित किया जाएगा।{'\n'}
-                Your PAN card will be verified.
-              </Text>
-              <TouchableOpacity
-                style={[styles.actionBtn, loading && styles.actionBtnDisabled]}
-                onPress={() => mockVerify('pan')}
-                disabled={loading}
-              >
-                <Text style={styles.actionBtnText}>
-                  {loading ? 'जाँच हो रही है...' : '💳 PAN जाँचें / Verify PAN'}
-                </Text>
-              </TouchableOpacity>
-            </>
-          )}
-        </View>
-
-        <View style={{ height: 40 }} />
+          );
+        })}
       </ScrollView>
     </SafeAreaView>
   );
@@ -165,35 +117,31 @@ export function EmployerVerificationScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
-  inner: { padding: Spacing.lg },
-  title: { fontSize: 22, fontWeight: '700', color: Colors.textPrimary, marginBottom: 4 },
-  subtitle: { ...Typography.body, color: Colors.textSecondary, marginBottom: Spacing.xl },
-  errorBox: { backgroundColor: Colors.dangerLight, padding: Spacing.md, borderRadius: 8, marginBottom: Spacing.md },
-  errorText: { color: Colors.danger, fontWeight: '600' },
-  stepsRow: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: Spacing.xl },
-  stepItem: { alignItems: 'center', flex: 1 },
-  stepCircle: { width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.surface, borderWidth: 2, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
-  stepDone: { backgroundColor: Colors.success, borderColor: Colors.success },
-  stepCircleText: { fontWeight: '700', color: Colors.textPrimary, fontSize: 14 },
-  stepLabel: { fontSize: 12, fontWeight: '600', color: Colors.textPrimary, textAlign: 'center' },
-  stepSub: { fontSize: 10, color: Colors.textSecondary, textAlign: 'center' },
-  card: { backgroundColor: Colors.surface, borderRadius: 14, padding: Spacing.lg, marginBottom: Spacing.lg, borderWidth: 1.5, borderColor: Colors.border },
-  cardDone: { borderColor: Colors.success, backgroundColor: '#F0FFF4' },
-  cardLocked: { opacity: 0.5 },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: Spacing.sm, gap: 10 },
-  cardIcon: { fontSize: 32 },
-  cardTitle: { fontSize: 17, fontWeight: '700', color: Colors.textPrimary },
-  cardSub: { fontSize: 12, color: Colors.textSecondary },
-  cardDesc: { ...Typography.body, color: Colors.textSecondary, lineHeight: 22, marginBottom: Spacing.md },
-  doneTag: { fontSize: 12, fontWeight: '700', color: Colors.success },
-  lockedTag: { fontSize: 12, fontWeight: '700', color: Colors.textTertiary },
-  actionBtn: { backgroundColor: Colors.primary, borderRadius: 10, padding: Spacing.md, alignItems: 'center' },
-  actionBtnDisabled: { opacity: 0.6 },
-  actionBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-  successBox: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.xl },
-  successIcon: { fontSize: 72, marginBottom: Spacing.lg },
-  successTitle: { fontSize: 26, fontWeight: '800', color: Colors.textPrimary, marginBottom: 8 },
-  successSub: { ...Typography.body, color: Colors.textSecondary, marginBottom: Spacing.xl },
-  doneBtn: { backgroundColor: Colors.primary, borderRadius: 12, paddingVertical: 14, paddingHorizontal: 32 },
-  doneBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  inner: { padding: Spacing.lg, paddingBottom: Spacing.xxl },
+
+  stepRow: { flexDirection: 'row' },
+  timeline: { alignItems: 'center', width: 44 },
+  dot: { width: 44, height: 44, borderRadius: 22, backgroundColor: Colors.surfaceAlt, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: Colors.border },
+  dotActive: { backgroundColor: Colors.primaryLight, borderColor: Colors.primary },
+  dotDone: { backgroundColor: Colors.success, borderColor: Colors.success },
+  connector: { width: 2, flex: 1, backgroundColor: Colors.border, marginVertical: 4 },
+  connectorDone: { backgroundColor: Colors.success },
+
+  card: { flex: 1, marginLeft: Spacing.md, marginBottom: Spacing.lg, backgroundColor: Colors.surface, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.border, padding: Spacing.lg, ...Shadows.sm },
+  cardActive: { borderColor: Colors.primary, borderWidth: 1.5 },
+  cardDone: { opacity: 0.85 },
+  cardHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  cardTitle: { ...Typography.h3, color: Colors.textPrimary },
+  doneTag: { backgroundColor: Colors.successLight, borderRadius: Radius.pill, paddingHorizontal: 10, paddingVertical: 4 },
+  doneTagText: { ...Typography.tiny, fontWeight: '700', color: Colors.successText },
+  lockTag: { backgroundColor: Colors.surfaceAlt, borderRadius: Radius.pill, paddingHorizontal: 10, paddingVertical: 4 },
+  lockTagText: { ...Typography.tiny, fontWeight: '700', color: Colors.textTertiary },
+  cardDesc: { ...Typography.body, color: Colors.textSecondary, marginTop: 6 },
+  cardBtn: { marginTop: Spacing.md },
+
+  successWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.xl },
+  successIcon: { width: 120, height: 120, borderRadius: 60, backgroundColor: Colors.successLight, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.xl },
+  successTitle: { ...Typography.h1, color: Colors.textPrimary, marginBottom: Spacing.sm },
+  successSub: { ...Typography.bodyLg, color: Colors.textSecondary, textAlign: 'center', marginBottom: Spacing.huge },
+  successBtn: { alignSelf: 'stretch' },
 });

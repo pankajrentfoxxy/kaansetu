@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, SafeAreaView, ScrollView,
+  View, Text, StyleSheet, ScrollView,
   RefreshControl, TouchableOpacity, Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch } from 'react-redux';
 import {
   useGetEmployerProfileQuery,
@@ -14,23 +15,18 @@ import {
 } from '../../store/api/employerApi';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { EmptyState } from '../../components/common/EmptyState';
-import { Colors, Spacing, Typography } from '../../theme';
+import { Icon } from '../../components/common/Icon';
+import { JobIcon } from '../../components/common/JobIcon';
+import { Avatar } from '../../components/common/Avatar';
+import { StatusBadge } from '../../components/common/StatusBadge';
+import { Colors, Radius, Shadows, Spacing, Typography, jobLabel } from '../../theme';
 import { SecureStore } from '../../utils/storage';
 import { logout } from '../../store/authSlice';
 import { baseApi } from '../../store/api/baseApi';
 
-const JOB_ICONS: Record<string, string> = {
-  driver: '🚗', security_guard: '🛡️', cook: '🍳', housekeeper: '🏠',
-  delivery: '📦', electrician: '🔧', plumber: '🔩', peon: '📋', sweeper: '🧹', helper: '👤',
-};
-
 function formatSalary(n: number) {
   if (n >= 1000) return `₹${(n / 1000).toFixed(0)}k`;
   return `₹${n}`;
-}
-
-function getInitials(name: string) {
-  return (name || 'KS').split(' ').slice(0, 2).map((w) => w[0]?.toUpperCase() ?? '').join('');
 }
 
 function formatDate(dateStr: string) {
@@ -52,14 +48,13 @@ export function EmployerDashboardScreen({ navigation }: any) {
 
   const unreadAlerts = alerts.filter((a: any) => !a.employer_action).length;
   const activeReqs = requirements.filter((r: any) => r.status === 'ACTIVE');
-  const totalMatches = requirements.reduce((sum: number, r: any) => sum + (r._count?.matches ?? 0), 0);
   const verifications: any[] = employer?.verifications ?? [];
   const isVerified = verifications.some((v: any) => v.status === 'VERIFIED');
 
-  const handleLogout = () => Alert.alert('लॉगआउट करें?', 'Logout from KaamSetu', [
-    { text: 'रद्द करें', style: 'cancel' },
+  const handleLogout = () => Alert.alert('Logout?', 'Logout from Kaamdhaam', [
+    { text: 'Cancel', style: 'cancel' },
     {
-      text: 'हाँ, निकलें', style: 'destructive', onPress: async () => {
+      text: 'Logout', style: 'destructive', onPress: async () => {
         await SecureStore.deleteItemAsync('access_token');
         await SecureStore.deleteItemAsync('refresh_token');
         dispatch(baseApi.util.resetApiState());
@@ -72,405 +67,312 @@ export function EmployerDashboardScreen({ navigation }: any) {
 
   if (empLoading) return <LoadingSpinner />;
 
-  const tabs: { key: Tab; label: string; count?: number }[] = [
-    { key: 'requirements', label: '📋 Posts', count: requirements.length },
-    { key: 'applications', label: '📨 Applied', count: applications.length },
-    { key: 'shortlisted', label: '⭐ Shortlist', count: shortlisted.length },
-    { key: 'hires', label: '✅ Hired', count: hires.length },
+  const tabs: { key: Tab; label: string; icon: string; count: number }[] = [
+    { key: 'requirements', label: 'Posts', icon: 'list', count: requirements.length },
+    { key: 'applications', label: 'Applied', icon: 'mail', count: applications.length },
+    { key: 'shortlisted', label: 'Shortlist', icon: 'star', count: shortlisted.length },
+    { key: 'hires', label: 'Hired', icon: 'checkmark-circle', count: hires.length },
   ];
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView
         contentContainerStyle={styles.scroll}
         refreshControl={<RefreshControl refreshing={false} onRefresh={doRefresh} tintColor={Colors.primary} />}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── Hero Card ── */}
-        <View style={styles.heroCard}>
+        {/* ── Hero ── */}
+        <View style={styles.hero}>
           <View style={styles.heroTop}>
-            <View style={styles.companyAvatar}>
-              <Text style={styles.companyAvatarText}>{getInitials(employer?.company_name ?? 'Co')}</Text>
-            </View>
+            <Avatar name={employer?.company_name ?? 'Co'} size={52} color="rgba(255,255,255,0.2)" />
             <View style={styles.heroInfo}>
               <Text style={styles.companyName} numberOfLines={1}>{employer?.company_name || 'Your Company'}</Text>
-              <Text style={styles.companyType}>{employer?.entity_type?.replace(/_/g, ' ') ?? 'Business'}</Text>
-              <Text style={styles.companyCity}>📍 {employer?.city ?? 'Add city'}</Text>
+              <View style={styles.heroLocRow}>
+                <Icon name="location-sharp" size={13} color="rgba(255,255,255,0.85)" />
+                <Text style={styles.companyCity}>{employer?.city ?? 'Add city'}</Text>
+              </View>
             </View>
             <View style={styles.headerRight}>
               {unreadAlerts > 0 && (
                 <TouchableOpacity style={styles.alertBtn} onPress={() => navigation.navigate('CaseAlert')}>
-                  <Text style={styles.alertBtnText}>🔔 {unreadAlerts}</Text>
+                  <Icon name="notifications" size={15} color="#fff" />
+                  <Text style={styles.alertBtnText}>{unreadAlerts}</Text>
                 </TouchableOpacity>
               )}
-              <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Text style={styles.logoutIcon}>⎋</Text>
+              <TouchableOpacity onPress={handleLogout} style={styles.iconBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Icon name="log-out-outline" size={22} color="#fff" />
               </TouchableOpacity>
             </View>
           </View>
 
           {!isVerified ? (
-            <TouchableOpacity style={styles.verifyBanner} onPress={() => navigation.navigate('EmployerVerification')}>
-              <Text style={styles.verifyBannerText}>⚠️ Business verification pending — Tap to verify</Text>
-              <Text style={styles.verifyBannerArrow}>→</Text>
+            <TouchableOpacity style={styles.verifyBanner} onPress={() => navigation.navigate('EmployerVerification')} activeOpacity={0.85}>
+              <Icon name="shield-half" size={18} color="#FDE68A" />
+              <Text style={styles.verifyBannerText}>Business verification pending — tap to verify</Text>
+              <Icon name="chevron-forward" size={18} color="#FDE68A" />
             </TouchableOpacity>
           ) : (
             <View style={styles.verifiedBadge}>
-              <Text style={styles.verifiedBadgeText}>✅ Business Verified</Text>
+              <Icon name="checkmark-circle" size={16} color="#A7F3D0" />
+              <Text style={styles.verifiedBadgeText}>Business Verified</Text>
             </View>
           )}
         </View>
 
-        {/* ── Stats Grid ── */}
+        {/* ── Stats ── */}
         <View style={styles.statsGrid}>
-          <View style={[styles.statCard, { backgroundColor: '#EBF5FF' }]}>
-            <Text style={styles.statIcon}>📋</Text>
-            <Text style={[styles.statNum, { color: Colors.primary }]}>{activeReqs.length}</Text>
-            <Text style={styles.statLabel}>Active Posts</Text>
-          </View>
-          <View style={[styles.statCard, { backgroundColor: '#FFF7ED' }]}>
-            <Text style={styles.statIcon}>📨</Text>
-            <Text style={[styles.statNum, { color: '#D97706' }]}>{applications.length}</Text>
-            <Text style={styles.statLabel}>Applications</Text>
-          </View>
-          <View style={[styles.statCard, { backgroundColor: '#F0FFF4' }]}>
-            <Text style={styles.statIcon}>✅</Text>
-            <Text style={[styles.statNum, { color: '#16A34A' }]}>{hires.length}</Text>
-            <Text style={styles.statLabel}>Hired</Text>
-          </View>
+          <StatCard icon="list" tint={Colors.primary} bg={Colors.primaryLight} value={activeReqs.length} label="Active Posts" />
+          <StatCard icon="mail" tint={Colors.warningDark} bg={Colors.warningLight} value={applications.length} label="Applications" />
+          <StatCard icon="checkmark-circle" tint={Colors.successDark} bg={Colors.successLight} value={hires.length} label="Hired" />
         </View>
 
-        {/* ── Quick Actions ── */}
+        {/* ── Quick actions ── */}
         <View style={styles.quickActions}>
-          <TouchableOpacity style={[styles.quickBtn, styles.quickBtnPrimary]} onPress={() => navigation.navigate('PostRequirement')}>
-            <Text style={styles.quickBtnIcon}>➕</Text>
-            <Text style={styles.quickBtnText}>Post Requirement</Text>
-            <Text style={styles.quickBtnSub}>नई ज़रूरत पोस्ट करें</Text>
+          <TouchableOpacity style={[styles.quickBtn, styles.quickPrimary]} onPress={() => navigation.navigate('PostRequirement')} activeOpacity={0.9}>
+            <View style={styles.quickIconLight}><Icon name="add" size={22} color="#fff" /></View>
+            <Text style={styles.quickText}>Post Requirement</Text>
+            <Text style={styles.quickSub}>Find verified workers</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.quickBtn, styles.quickBtnSecondary]} onPress={() => navigation.navigate('EmployerVerification')}>
-            <Text style={styles.quickBtnIcon}>🔐</Text>
-            <Text style={[styles.quickBtnText, { color: Colors.primary }]}>Verification</Text>
-            <Text style={[styles.quickBtnSub, { color: Colors.textSecondary }]}>सत्यापन करें</Text>
+          <TouchableOpacity style={[styles.quickBtn, styles.quickSecondary]} onPress={() => navigation.navigate('EmployerVerification')} activeOpacity={0.9}>
+            <View style={styles.quickIconDark}><Icon name="shield-checkmark" size={22} color={Colors.primary} /></View>
+            <Text style={[styles.quickText, { color: Colors.primary }]}>Verification</Text>
+            <Text style={[styles.quickSub, { color: Colors.textSecondary }]}>Verify your business</Text>
           </TouchableOpacity>
         </View>
 
         {/* ── Tabs ── */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsScroll} contentContainerStyle={styles.tabsRow}>
-          {tabs.map((t) => (
-            <TouchableOpacity
-              key={t.key}
-              style={[styles.tab, activeTab === t.key && styles.tabActive]}
-              onPress={() => setActiveTab(t.key)}
-            >
-              <Text style={[styles.tabText, activeTab === t.key && styles.tabTextActive]}>
-                {t.label}{t.count ? ` (${t.count})` : ''}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          {tabs.map((tb) => {
+            const active = activeTab === tb.key;
+            return (
+              <TouchableOpacity key={tb.key} style={[styles.tab, active && styles.tabActive]} onPress={() => setActiveTab(tb.key)} activeOpacity={0.85}>
+                <Icon name={active ? tb.icon : `${tb.icon}-outline`} size={16} color={active ? '#fff' : Colors.textSecondary} />
+                <Text style={[styles.tabText, active && styles.tabTextActive]}>{tb.label}{tb.count ? ` ${tb.count}` : ''}</Text>
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
 
-        {/* ── Requirements Tab ── */}
+        {/* ── Requirements ── */}
         {activeTab === 'requirements' && (
-          <>
-            {reqLoading ? <LoadingSpinner /> : requirements.length === 0 ? (
-              <View style={styles.emptyCard}>
-                <Text style={styles.emptyIcon}>📭</Text>
-                <Text style={styles.emptyTitle}>No requirements posted</Text>
-                <Text style={styles.emptyText}>Post your first requirement to find verified workers</Text>
-                <TouchableOpacity style={styles.emptyBtn} onPress={() => navigation.navigate('PostRequirement')}>
-                  <Text style={styles.emptyBtnText}>+ Post Requirement</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              requirements.map((req: any) => (
-                <TouchableOpacity
-                  key={req.id}
-                  style={styles.reqCard}
-                  onPress={() => navigation.navigate('MatchedProfiles', { requirementId: req.id })}
-                  activeOpacity={0.85}
-                >
-                  <View style={styles.reqCardLeft}>
-                    <View style={styles.reqIconCircle}>
-                      <Text style={styles.reqIconText}>{JOB_ICONS[req.job_type] ?? '💼'}</Text>
-                    </View>
-                    <View style={styles.reqInfo}>
-                      <Text style={styles.reqTitle}>{req.job_type?.replace(/_/g, ' ')?.toUpperCase()}</Text>
-                      <Text style={styles.reqLocation}>📍 {req.city ?? 'Pan India'}</Text>
-                      <Text style={styles.reqSalary}>{formatSalary(req.salary_min ?? 0)} – {formatSalary(req.salary_max ?? 0)}/mo</Text>
-                    </View>
+          reqLoading ? <LoadingSpinner inline /> : requirements.length === 0 ? (
+            <EmptyState icon="list-outline" message="No requirements posted" subMessage="Post your first requirement to find verified workers" actionLabel="Post Requirement" onAction={() => navigation.navigate('PostRequirement')} />
+          ) : (
+            requirements.map((req: any) => (
+              <TouchableOpacity key={req.id} style={styles.rowCard} onPress={() => navigation.navigate('MatchedProfiles', { requirementId: req.id })} activeOpacity={0.85}>
+                <JobIcon jobType={req.job_type} size={48} />
+                <View style={styles.rowInfo}>
+                  <Text style={styles.rowTitle}>{jobLabel(req.job_type, 'en')}</Text>
+                  <View style={styles.rowMetaRow}>
+                    <Icon name="location-outline" size={13} color={Colors.textTertiary} />
+                    <Text style={styles.rowMeta}>{req.city ?? 'Pan India'}</Text>
                   </View>
-                  <View style={styles.reqRight}>
-                    <View style={[styles.reqStatus, req.status === 'ACTIVE' ? styles.reqStatusActive : styles.reqStatusInactive]}>
-                      <Text style={[styles.reqStatusText, req.status === 'ACTIVE' ? { color: '#166534' } : { color: Colors.textSecondary }]}>{req.status}</Text>
-                    </View>
-                    <Text style={styles.reqMatches}>{req._count?.matches ?? 0} matches</Text>
-                    <Text style={styles.reqArrow}>→</Text>
-                  </View>
-                </TouchableOpacity>
-              ))
-            )}
-          </>
+                  <Text style={styles.rowSalary}>{formatSalary(req.salary_min ?? 0)} – {formatSalary(req.salary_max ?? 0)}/mo</Text>
+                </View>
+                <View style={styles.rowRight}>
+                  <StatusBadge status={req.status === 'ACTIVE' ? 'active' : 'pending'} customLabel={req.status === 'ACTIVE' ? 'Active' : req.status} />
+                  <Text style={styles.matchCount}>{req._count?.matches ?? 0} matches</Text>
+                </View>
+              </TouchableOpacity>
+            ))
+          )
         )}
 
-        {/* ── Applications Tab ── */}
+        {/* ── Applications ── */}
         {activeTab === 'applications' && (
-          <>
-            {applications.length === 0 ? (
-              <EmptyState icon="📭" message="No applications yet" subMessage="Workers who apply for your jobs will appear here." />
-            ) : (
-              applications.map((app: any) => {
-                const worker = app.worker ?? {};
-                const data = app.data ?? {};
-                return (
-                  <View key={app.id} style={styles.workerCard}>
-                    <View style={styles.workerCardLeft}>
-                      <View style={styles.workerAvatar}>
-                        <Text style={styles.workerAvatarText}>{getInitials(worker.full_name ?? '?')}</Text>
-                      </View>
-                      <View style={styles.workerInfo}>
-                        <Text style={styles.workerName}>{worker.full_name ?? 'Worker'}</Text>
-                        <Text style={styles.workerLocation}>📍 {worker.location?.city ?? 'N/A'}</Text>
-                        {(worker.skills?.length ?? 0) > 0 && (
-                          <Text style={styles.workerSkill}>
-                            {JOB_ICONS[worker.skills[0]?.skill_type] ?? '💼'} {worker.skills[0]?.skill_type?.replace(/_/g, ' ')}
-                          </Text>
-                        )}
-                      </View>
+          applications.length === 0 ? (
+            <EmptyState icon="mail-outline" message="No applications yet" subMessage="Workers who apply for your jobs will appear here." />
+          ) : (
+            applications.map((app: any) => {
+              const worker = app.worker ?? {};
+              return (
+                <View key={app.id} style={styles.rowCard}>
+                  <Avatar name={worker.full_name ?? '?'} size={46} />
+                  <View style={styles.rowInfo}>
+                    <Text style={styles.rowTitle}>{worker.full_name ?? 'Worker'}</Text>
+                    <View style={styles.rowMetaRow}>
+                      <Icon name="location-outline" size={13} color={Colors.textTertiary} />
+                      <Text style={styles.rowMeta}>{worker.location?.city ?? 'N/A'}</Text>
                     </View>
-                    <View style={styles.workerCardRight}>
-                      <View style={styles.appliedBadge}><Text style={styles.appliedBadgeText}>📨 Applied</Text></View>
-                      {app.created_at && <Text style={styles.appliedDate}>{formatDate(app.created_at)}</Text>}
-                    </View>
+                    {(worker.skills?.length ?? 0) > 0 && (
+                      <Text style={styles.rowSkill}>{jobLabel(worker.skills[0]?.skill_type, 'en')}</Text>
+                    )}
                   </View>
-                );
-              })
-            )}
-          </>
+                  <View style={styles.rowRight}>
+                    <StatusBadge status="in_progress" customLabel="Applied" />
+                    {app.created_at && <Text style={styles.matchCount}>{formatDate(app.created_at)}</Text>}
+                  </View>
+                </View>
+              );
+            })
+          )
         )}
 
-        {/* ── Shortlisted Tab ── */}
+        {/* ── Shortlisted ── */}
         {activeTab === 'shortlisted' && (
-          <>
-            {shortlisted.length === 0 ? (
-              <EmptyState icon="⭐" message="No shortlisted workers" subMessage="Shortlist workers from matched profiles to see them here." />
-            ) : (
-              shortlisted.map((sl: any) => {
-                const worker = sl.worker ?? {};
-                return (
-                  <TouchableOpacity
-                    key={sl.id}
-                    style={styles.workerCard}
-                    onPress={() => navigation.navigate('HireConfirmed', {
-                      workerId: worker.id,
-                      workerName: worker.full_name,
-                      requirementId: sl.requirement_id,
-                    })}
-                    activeOpacity={0.85}
-                  >
-                    <View style={styles.workerCardLeft}>
-                      <View style={styles.workerAvatar}>
-                        <Text style={styles.workerAvatarText}>{getInitials(worker.full_name ?? '?')}</Text>
-                      </View>
-                      <View style={styles.workerInfo}>
-                        <Text style={styles.workerName}>{worker.full_name ?? 'Worker'}</Text>
-                        <Text style={styles.workerLocation}>📍 {worker.location?.city ?? 'N/A'}</Text>
-                        {(worker.skills?.length ?? 0) > 0 && (
-                          <Text style={styles.workerSkill}>
-                            {JOB_ICONS[worker.skills[0]?.skill_type] ?? '💼'} {worker.skills[0]?.skill_type?.replace(/_/g, ' ')}
-                          </Text>
-                        )}
-                      </View>
+          shortlisted.length === 0 ? (
+            <EmptyState icon="star-outline" message="No shortlisted workers" subMessage="Shortlist workers from matched profiles to see them here." />
+          ) : (
+            shortlisted.map((sl: any) => {
+              const worker = sl.worker ?? {};
+              return (
+                <TouchableOpacity key={sl.id} style={styles.rowCard} activeOpacity={0.85}
+                  onPress={() => navigation.navigate('HireConfirmed', { workerId: worker.id, workerName: worker.full_name, requirementId: sl.requirement_id })}>
+                  <Avatar name={worker.full_name ?? '?'} size={46} />
+                  <View style={styles.rowInfo}>
+                    <Text style={styles.rowTitle}>{worker.full_name ?? 'Worker'}</Text>
+                    <View style={styles.rowMetaRow}>
+                      <Icon name="location-outline" size={13} color={Colors.textTertiary} />
+                      <Text style={styles.rowMeta}>{worker.location?.city ?? 'N/A'}</Text>
                     </View>
-                    <View style={styles.workerCardRight}>
-                      <View style={styles.shortlistBadge}><Text style={styles.shortlistBadgeText}>⭐ Shortlisted</Text></View>
-                      <Text style={styles.hireNowText}>Hire Now →</Text>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })
-            )}
-          </>
-        )}
-
-        {/* ── Hires Tab ── */}
-        {activeTab === 'hires' && (
-          <>
-            {hires.length === 0 ? (
-              <EmptyState icon="✅" message="No hires yet" subMessage="Workers you hire will appear here." />
-            ) : (
-              hires.map((hire: any) => {
-                const worker = hire.worker ?? {};
-                const statusColors: Record<string, string> = {
-                  OFFER_SENT: '#FEF3C7', EMPLOYER_SIGNED: '#DBEAFE', ACTIVE: '#DCFCE7', TERMINATED: '#FEE2E2',
-                };
-                const statusLabels: Record<string, string> = {
-                  OFFER_SENT: '📤 Offer Sent', EMPLOYER_SIGNED: '✍️ Signed', ACTIVE: '✅ Active', TERMINATED: '❌ Ended',
-                };
-                const isOfferSent = hire.status === 'OFFER_SENT';
-                return (
-                  <View key={hire.id} style={styles.hireCard}>
-                    <View style={styles.workerCardLeft}>
-                      <View style={styles.workerAvatar}>
-                        <Text style={styles.workerAvatarText}>{getInitials(worker.full_name ?? '?')}</Text>
-                      </View>
-                      <View style={styles.workerInfo}>
-                        <Text style={styles.workerName}>{worker.full_name ?? 'Worker'}</Text>
-                        <Text style={styles.workerLocation}>📍 {worker.location?.city ?? 'N/A'}</Text>
-                        {hire.offer_salary && (
-                          <Text style={styles.hireSalary}>₹{Number(hire.offer_salary).toLocaleString('en-IN')}/month</Text>
-                        )}
-                        {hire.start_date && (
-                          <Text style={styles.hireStartDate}>📅 Joining: {formatDate(hire.start_date)}</Text>
-                        )}
-                      </View>
-                    </View>
-                    <View style={styles.workerCardRight}>
-                      <View style={[styles.hireStatusBadge, { backgroundColor: statusColors[hire.status] ?? '#F1F5F9' }]}>
-                        <Text style={styles.hireStatusText}>{statusLabels[hire.status] ?? hire.status}</Text>
-                      </View>
-                      {isOfferSent && (
-                        <TouchableOpacity
-                          style={styles.esignBtn}
-                          onPress={() => navigation.navigate('HireConfirmed', {
-                            workerId: worker.id,
-                            workerName: worker.full_name,
-                            requirementId: hire.requirement_id,
-                            _hireId: hire.id, // pre-fill to skip to e-sign step
-                          })}
-                        >
-                          <Text style={styles.esignBtnText}>✍️ E-Sign</Text>
-                        </TouchableOpacity>
-                      )}
+                    {(worker.skills?.length ?? 0) > 0 && (
+                      <Text style={styles.rowSkill}>{jobLabel(worker.skills[0]?.skill_type, 'en')}</Text>
+                    )}
+                  </View>
+                  <View style={styles.rowRight}>
+                    <StatusBadge status="pending" customLabel="Shortlisted" />
+                    <View style={styles.hireNow}>
+                      <Text style={styles.hireNowText}>Hire Now</Text>
+                      <Icon name="arrow-forward" size={13} color={Colors.primary} />
                     </View>
                   </View>
-                );
-              })
-            )}
-          </>
+                </TouchableOpacity>
+              );
+            })
+          )
         )}
 
-        {/* ── Case Alerts ── */}
+        {/* ── Hires ── */}
+        {activeTab === 'hires' && (
+          hires.length === 0 ? (
+            <EmptyState icon="checkmark-circle-outline" message="No hires yet" subMessage="Workers you hire will appear here." />
+          ) : (
+            hires.map((hire: any) => {
+              const worker = hire.worker ?? {};
+              const statusMap: Record<string, { s: any; l: string }> = {
+                OFFER_SENT: { s: 'pending', l: 'Offer Sent' },
+                EMPLOYER_SIGNED: { s: 'in_progress', l: 'Signed' },
+                ACTIVE: { s: 'active', l: 'Active' },
+                TERMINATED: { s: 'rejected', l: 'Ended' },
+              };
+              const sm = statusMap[hire.status] ?? { s: 'in_progress', l: hire.status };
+              const isOfferSent = hire.status === 'OFFER_SENT';
+              return (
+                <View key={hire.id} style={[styles.rowCard, { alignItems: 'flex-start' }]}>
+                  <Avatar name={worker.full_name ?? '?'} size={46} />
+                  <View style={styles.rowInfo}>
+                    <Text style={styles.rowTitle}>{worker.full_name ?? 'Worker'}</Text>
+                    {hire.offer_salary && <Text style={styles.rowSalary}>₹{Number(hire.offer_salary).toLocaleString('en-IN')}/mo</Text>}
+                    {hire.start_date && (
+                      <View style={styles.rowMetaRow}>
+                        <Icon name="calendar-outline" size={13} color={Colors.textTertiary} />
+                        <Text style={styles.rowMeta}>Joining {formatDate(hire.start_date)}</Text>
+                      </View>
+                    )}
+                  </View>
+                  <View style={styles.rowRight}>
+                    <StatusBadge status={sm.s} customLabel={sm.l} />
+                    {isOfferSent && (
+                      <TouchableOpacity style={styles.esignBtn}
+                        onPress={() => navigation.navigate('HireConfirmed', { workerId: worker.id, workerName: worker.full_name, requirementId: hire.requirement_id, _hireId: hire.id })}>
+                        <Icon name="create-outline" size={14} color="#fff" />
+                        <Text style={styles.esignBtnText}>E-Sign</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </View>
+              );
+            })
+          )
+        )}
+
+        {/* ── Case alerts ── */}
         {unreadAlerts > 0 && (
-          <TouchableOpacity style={styles.alertCard} onPress={() => navigation.navigate('CaseAlert')}>
-            <Text style={styles.alertCardIcon}>⚠️</Text>
-            <View style={styles.alertCardInfo}>
-              <Text style={styles.alertCardTitle}>{unreadAlerts} Case Alert{unreadAlerts > 1 ? 's' : ''}</Text>
-              <Text style={styles.alertCardSub}>Worker flagged — action required</Text>
+          <TouchableOpacity style={styles.caseAlert} onPress={() => navigation.navigate('CaseAlert')} activeOpacity={0.9}>
+            <View style={styles.caseAlertIcon}><Icon name="warning" size={20} color={Colors.warningDark} /></View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.caseAlertTitle}>{unreadAlerts} Case Alert{unreadAlerts > 1 ? 's' : ''}</Text>
+              <Text style={styles.caseAlertSub}>Worker flagged — action required</Text>
             </View>
-            <Text style={styles.alertCardArrow}>→</Text>
+            <Icon name="chevron-forward" size={20} color={Colors.warningDark} />
           </TouchableOpacity>
         )}
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: Spacing.xxl }} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
+function StatCard({ icon, tint, bg, value, label }: { icon: string; tint: string; bg: string; value: number; label: string }) {
+  return (
+    <View style={styles.statCard}>
+      <View style={[styles.statIconWrap, { backgroundColor: bg }]}>
+        <Icon name={icon} size={20} color={tint} />
+      </View>
+      <Text style={[styles.statNum, { color: tint }]}>{value}</Text>
+      <Text style={styles.statLabel}>{label}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F0F4F8' },
-  scroll: { padding: 16, paddingBottom: 32 },
+  container: { flex: 1, backgroundColor: Colors.background },
+  scroll: { padding: Spacing.lg, paddingBottom: Spacing.xxxl },
 
-  // Hero
-  heroCard: { backgroundColor: '#1A56A0', borderRadius: 20, padding: 20, marginBottom: 16, shadowColor: '#1A56A0', shadowOpacity: 0.3, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 6 },
-  heroTop: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 },
-  companyAvatar: { width: 56, height: 56, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.25)', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: 'rgba(255,255,255,0.4)' },
-  companyAvatarText: { color: '#fff', fontSize: 22, fontWeight: '800' },
-  heroInfo: { flex: 1 },
-  companyName: { color: '#fff', fontSize: 18, fontWeight: '700' },
-  companyType: { color: 'rgba(255,255,255,0.7)', fontSize: 12, textTransform: 'capitalize', marginTop: 1 },
-  companyCity: { color: 'rgba(255,255,255,0.8)', fontSize: 13, marginTop: 2 },
-  headerRight: { alignItems: 'flex-end', gap: 8 },
-  alertBtn: { backgroundColor: '#EF4444', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
-  alertBtnText: { color: '#fff', fontSize: 12, fontWeight: '700' },
-  logoutBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
-  logoutIcon: { color: '#fff', fontSize: 18 },
-  verifyBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 },
-  verifyBannerText: { flex: 1, color: '#FDE68A', fontSize: 13, fontWeight: '600' },
-  verifyBannerArrow: { color: '#FDE68A', fontSize: 18, fontWeight: '700' },
-  verifiedBadge: { backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, alignSelf: 'flex-start' },
-  verifiedBadgeText: { color: '#A7F3D0', fontSize: 13, fontWeight: '700' },
+  hero: { backgroundColor: Colors.primary, borderRadius: Radius.xl, padding: Spacing.xl, marginBottom: Spacing.lg, ...Shadows.primary },
+  heroTop: { flexDirection: 'row', alignItems: 'center', marginBottom: Spacing.lg },
+  heroInfo: { flex: 1, marginLeft: Spacing.md },
+  companyName: { color: '#fff', ...Typography.h3, fontWeight: '700' },
+  heroLocRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 3 },
+  companyCity: { color: 'rgba(255,255,255,0.85)', ...Typography.caption },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  alertBtn: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: Colors.danger, borderRadius: Radius.pill, paddingHorizontal: 10, paddingVertical: 5 },
+  alertBtnText: { color: '#fff', ...Typography.tiny, fontWeight: '700' },
+  iconBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
+  verifyBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: Radius.md, paddingHorizontal: 14, paddingVertical: 11 },
+  verifyBannerText: { flex: 1, color: '#FDE68A', ...Typography.captionStrong },
+  verifiedBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: Radius.md, paddingHorizontal: 14, paddingVertical: 10, alignSelf: 'flex-start' },
+  verifiedBadgeText: { color: '#A7F3D0', ...Typography.captionStrong },
 
-  // Stats
-  statsGrid: { flexDirection: 'row', gap: 10, marginBottom: 16 },
-  statCard: { flex: 1, borderRadius: 14, padding: 14, alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 6, elevation: 2 },
-  statIcon: { fontSize: 22, marginBottom: 4 },
-  statNum: { fontSize: 26, fontWeight: '800' },
-  statLabel: { fontSize: 12, color: Colors.textSecondary, fontWeight: '500', marginTop: 2, textAlign: 'center' },
+  statsGrid: { flexDirection: 'row', gap: 10, marginBottom: Spacing.lg },
+  statCard: { flex: 1, backgroundColor: Colors.surface, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.border, padding: Spacing.md, alignItems: 'center', ...Shadows.sm },
+  statIconWrap: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
+  statNum: { ...Typography.h1, fontWeight: '800' },
+  statLabel: { ...Typography.tiny, color: Colors.textSecondary, marginTop: 2, textAlign: 'center' },
 
-  // Quick Actions
-  quickActions: { flexDirection: 'row', gap: 10, marginBottom: 16 },
-  quickBtn: { flex: 1, borderRadius: 14, padding: 14, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 6, elevation: 2 },
-  quickBtnPrimary: { backgroundColor: Colors.primary },
-  quickBtnSecondary: { backgroundColor: '#fff', borderWidth: 1.5, borderColor: Colors.primaryLight },
-  quickBtnIcon: { fontSize: 22, marginBottom: 6 },
-  quickBtnText: { fontSize: 15, fontWeight: '700', color: '#fff', marginBottom: 2 },
-  quickBtnSub: { fontSize: 12, color: 'rgba(255,255,255,0.75)' },
+  quickActions: { flexDirection: 'row', gap: 10, marginBottom: Spacing.lg },
+  quickBtn: { flex: 1, borderRadius: Radius.lg, padding: Spacing.lg, ...Shadows.sm },
+  quickPrimary: { backgroundColor: Colors.primary },
+  quickSecondary: { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border },
+  quickIconLight: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.sm },
+  quickIconDark: { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.primaryLight, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.sm },
+  quickText: { ...Typography.bodyStrong, color: '#fff', marginBottom: 2 },
+  quickSub: { ...Typography.caption, color: 'rgba(255,255,255,0.75)' },
 
-  // Tabs
-  tabsScroll: { marginBottom: 14 },
+  tabsScroll: { marginBottom: Spacing.md, overflow: 'visible' },
   tabsRow: { gap: 8, paddingRight: 4 },
-  tab: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: '#E2E8F0' },
-  tabActive: { backgroundColor: Colors.primary },
-  tabText: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary },
+  tab: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 9, borderRadius: Radius.pill, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border },
+  tabActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  tabText: { ...Typography.captionStrong, color: Colors.textSecondary },
   tabTextActive: { color: '#fff' },
 
-  // Empty
-  emptyCard: { backgroundColor: '#fff', borderRadius: 16, padding: 28, alignItems: 'center', borderWidth: 1.5, borderColor: Colors.border, marginBottom: 16 },
-  emptyIcon: { fontSize: 48, marginBottom: 12 },
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary, marginBottom: 6 },
-  emptyText: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', marginBottom: 16 },
-  emptyBtn: { backgroundColor: Colors.primary, borderRadius: 10, paddingVertical: 12, paddingHorizontal: 24 },
-  emptyBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  rowCard: { backgroundColor: Colors.surface, borderRadius: Radius.lg, padding: Spacing.lg, marginBottom: Spacing.md, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: Colors.border, ...Shadows.sm },
+  rowInfo: { flex: 1, marginLeft: Spacing.md },
+  rowTitle: { ...Typography.bodyStrong, color: Colors.textPrimary },
+  rowMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 },
+  rowMeta: { ...Typography.caption, color: Colors.textSecondary },
+  rowSalary: { ...Typography.captionStrong, color: Colors.primary, marginTop: 3 },
+  rowSkill: { ...Typography.caption, color: Colors.primary, marginTop: 2, fontWeight: '600', textTransform: 'capitalize' },
+  rowRight: { alignItems: 'flex-end', gap: 5 },
+  matchCount: { ...Typography.caption, color: Colors.textTertiary },
+  hireNow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  hireNowText: { ...Typography.captionStrong, color: Colors.primary },
+  esignBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.primary, borderRadius: Radius.sm, paddingHorizontal: 10, paddingVertical: 7 },
+  esignBtnText: { color: '#fff', ...Typography.tiny, fontWeight: '700' },
 
-  // Requirement Card
-  reqCard: { backgroundColor: '#fff', borderRadius: 14, padding: 14, marginBottom: 10, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#E8EEF4', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, elevation: 3 },
-  reqCardLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
-  reqIconCircle: { width: 48, height: 48, borderRadius: 12, backgroundColor: Colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
-  reqIconText: { fontSize: 24 },
-  reqInfo: { flex: 1 },
-  reqTitle: { fontSize: 13, fontWeight: '800', color: Colors.textPrimary, letterSpacing: 0.3 },
-  reqLocation: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
-  reqSalary: { fontSize: 13, fontWeight: '700', color: Colors.primary, marginTop: 2 },
-  reqRight: { alignItems: 'flex-end', gap: 4 },
-  reqStatus: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 },
-  reqStatusActive: { backgroundColor: '#DCFCE7' },
-  reqStatusInactive: { backgroundColor: '#F1F5F9' },
-  reqStatusText: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase' },
-  reqMatches: { fontSize: 12, color: Colors.textSecondary },
-  reqArrow: { fontSize: 16, color: Colors.primary, fontWeight: '700' },
-
-  // Worker Cards (applications / shortlist)
-  workerCard: { backgroundColor: '#fff', borderRadius: 14, padding: 14, marginBottom: 10, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#E8EEF4', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, elevation: 3 },
-  workerCardLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
-  workerAvatar: { width: 46, height: 46, borderRadius: 23, backgroundColor: Colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
-  workerAvatarText: { fontSize: 16, fontWeight: '800', color: Colors.primary },
-  workerInfo: { flex: 1 },
-  workerName: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
-  workerLocation: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
-  workerSkill: { fontSize: 12, color: Colors.primary, marginTop: 2, fontWeight: '600', textTransform: 'capitalize' },
-  workerCardRight: { alignItems: 'flex-end', gap: 6 },
-  appliedBadge: { backgroundColor: '#DBEAFE', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
-  appliedBadgeText: { fontSize: 11, fontWeight: '700', color: '#1E40AF' },
-  appliedDate: { fontSize: 11, color: Colors.textTertiary },
-  shortlistBadge: { backgroundColor: '#FEF3C7', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
-  shortlistBadgeText: { fontSize: 11, fontWeight: '700', color: '#92400E' },
-  hireNowText: { fontSize: 12, color: Colors.primary, fontWeight: '700', marginTop: 2 },
-
-  // Hire Cards
-  hireCard: { backgroundColor: '#fff', borderRadius: 14, padding: 14, marginBottom: 10, flexDirection: 'row', alignItems: 'flex-start', borderWidth: 1, borderColor: '#E8EEF4', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, elevation: 3 },
-  hireSalary: { fontSize: 13, fontWeight: '700', color: Colors.primary, marginTop: 4 },
-  hireStartDate: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
-  hireStatusBadge: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
-  hireStatusText: { fontSize: 11, fontWeight: '700' },
-  esignBtn: { backgroundColor: Colors.primary, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, marginTop: 6 },
-  esignBtnText: { color: '#fff', fontSize: 12, fontWeight: '700' },
-
-  // Alert
-  alertCard: { backgroundColor: '#FFF7ED', borderRadius: 14, padding: 16, marginBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1.5, borderColor: '#FCD34D' },
-  alertCardIcon: { fontSize: 28 },
-  alertCardInfo: { flex: 1 },
-  alertCardTitle: { fontSize: 15, fontWeight: '700', color: '#92400E' },
-  alertCardSub: { fontSize: 12, color: '#B45309', marginTop: 2 },
-  alertCardArrow: { fontSize: 18, color: '#D97706', fontWeight: '700' },
+  caseAlert: { backgroundColor: Colors.warningLight, borderRadius: Radius.lg, padding: Spacing.lg, marginBottom: Spacing.md, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#F2D49B' },
+  caseAlertIcon: { width: 42, height: 42, borderRadius: 21, backgroundColor: '#F7E2B7', alignItems: 'center', justifyContent: 'center', marginRight: Spacing.md },
+  caseAlertTitle: { ...Typography.bodyStrong, color: Colors.warningText },
+  caseAlertSub: { ...Typography.caption, color: Colors.warningDark, marginTop: 2 },
 });

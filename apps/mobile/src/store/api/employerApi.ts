@@ -35,6 +35,17 @@ export const employerApi = baseApi.injectEndpoints({
     confirmHire: builder.mutation<any, { worker_id: string; requirement_id: string; offer_salary: number; start_date: string }>({
       query: (body) => ({ url: '/employer/hire', method: 'POST', body }),
     }),
+    getHires: builder.query<any[], void>({
+      query: () => '/employer/hires',
+      providesTags: ['Matches'],
+    }),
+    esignHire: builder.mutation<any, { hireId: string; employer_signature_name: string }>({
+      query: ({ hireId, ...body }) => ({ url: `/employer/hire/${hireId}/esign`, method: 'PUT', body }),
+      invalidatesTags: ['Matches'],
+    }),
+    getApplications: builder.query<any[], void>({
+      query: () => '/employer/applications',
+    }),
     getCaseAlerts: builder.query<any[], void>({
       query: () => '/employer/case-alerts',
       providesTags: ['CaseAlerts'],
@@ -64,6 +75,9 @@ export const {
   useAddShortlistMutation,
   useGetShortlistQuery,
   useConfirmHireMutation,
+  useGetHiresQuery,
+  useEsignHireMutation,
+  useGetApplicationsQuery,
   useGetCaseAlertsQuery,
   useMarkAlertActionMutation,
   useMockEmployerBusinessMutation,

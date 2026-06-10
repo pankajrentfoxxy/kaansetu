@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import { useGetWorkerProfileQuery, useUpdateLocationMutation } from '../../store/api/workerApi';
 import { ProgressBar } from '../../components/common/ProgressBar';
@@ -8,7 +9,9 @@ import { ChipGroup } from '../../components/common/ChipGroup';
 import { Button } from '../../components/common/Button';
 import { ToggleSwitch } from '../../components/common/ToggleSwitch';
 import { AlertCard } from '../../components/common/AlertCard';
-import { Colors, Spacing, Typography } from '../../theme';
+import { ScreenHeader } from '../../components/common/ScreenHeader';
+import { Icon } from '../../components/common/Icon';
+import { Colors, Radius, Spacing, Typography } from '../../theme';
 
 const TOP_CITIES = [
   'Delhi', 'Mumbai', 'Bangalore', 'Hyderabad', 'Chennai',
@@ -33,7 +36,6 @@ export function LocationPreferencesScreen({ navigation }: any) {
   const [prefilled, setPrefilled] = useState(false);
   const [updateLocation, { isLoading }] = useUpdateLocationMutation();
 
-  // Pre-fill from existing profile
   useEffect(() => {
     if (worker?.location && !prefilled) {
       const loc = worker.location;
@@ -49,10 +51,9 @@ export function LocationPreferencesScreen({ navigation }: any) {
     }
   }, [worker, prefilled]);
 
-  // Auto-detect location on mount (only if no saved location)
   useEffect(() => {
-    if (!prefilled) return; // wait for prefill check first
-    if (worker?.location?.city) return; // already have saved location
+    if (!prefilled) return;
+    if (worker?.location?.city) return;
     detectLocation();
   }, [prefilled]);
 
@@ -62,7 +63,7 @@ export function LocationPreferencesScreen({ navigation }: any) {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        setError('Location permission denied — please enter manually below');
+        setError('लोकेशन की अनुमति नहीं मिली — नीचे खुद भरें');
         return;
       }
       const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
@@ -70,15 +71,14 @@ export function LocationPreferencesScreen({ navigation }: any) {
       setLongitude(pos.coords.longitude);
       const [place] = await Location.reverseGeocodeAsync(pos.coords);
       if (place) {
-        const addr = [place.street, place.district ?? place.subregion ?? place.city, place.region]
-          .filter(Boolean).join(', ');
+        const addr = [place.street, place.district ?? place.subregion ?? place.city, place.region].filter(Boolean).join(', ');
         setAddress(addr);
         setCity(place.city ?? place.district ?? place.subregion ?? '');
         setPincode(place.postalCode ?? '');
         setLocationDetected(true);
       }
     } catch {
-      setError('Could not detect location — please enter manually below');
+      setError('लोकेशन नहीं मिली — नीचे खुद भरें');
     } finally {
       setDetecting(false);
     }
@@ -90,85 +90,60 @@ export function LocationPreferencesScreen({ navigation }: any) {
   const handleSave = async () => {
     setError('');
     try {
-      // Round to 6 decimal places — DB column is Decimal(10,8), GPS returns 9-15 digits
       const lat = latitude !== undefined ? Math.round(latitude * 1e6) / 1e6 : undefined;
       const lng = longitude !== undefined ? Math.round(longitude * 1e6) / 1e6 : undefined;
       await updateLocation({
-        current_address: address,
-        city,
-        pincode,
-        latitude: lat,
-        longitude: lng,
+        current_address: address, city, pincode,
+        latitude: lat, longitude: lng,
         preferred_cities: preferredCities,
-        is_live_in_ok: liveIn,
-        is_pan_india: panIndia,
+        is_live_in_ok: liveIn, is_pan_india: panIndia,
       }).unwrap();
       navigation.navigate('KycVerification');
     } catch {
-      setError('Failed to save. Please try again.');
+      setError('सेव नहीं हो सका। फिर कोशिश करें।');
     }
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.inner} keyboardShouldPersistTaps="handled">
-        <ProgressBar current={4} total={7} label="Step 4 of 7" />
-        <Text style={styles.title}>Location & Preferences</Text>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
+      <ScreenHeader title="जगह और पसंद" subtitle="चरण 4 / 7" onBack={() => navigation.goBack()} />
+      <ScrollView contentContainerStyle={styles.inner} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <ProgressBar current={4} total={7} />
 
-        {detecting && (
-          <AlertCard type="info" message="📍 Detecting your location automatically..." />
-        )}
-        {locationDetected && !detecting && (
-          <AlertCard type="success" message={`📍 Location detected: ${city || address}`} />
-        )}
+        {detecting && <AlertCard type="info" message="आपकी लोकेशन ढूँढी जा रही है..." />}
+        {locationDetected && !detecting && <AlertCard type="success" message={`लोकेशन मिल गई: ${city || address}`} />}
         {error ? <AlertCard type="danger" message={error} /> : null}
 
-        {/* Re-detect button */}
         <Button
-          title={detecting ? 'Detecting...' : '📍 Re-detect my location'}
+          title={detecting ? 'ढूँढ रहे हैं...' : 'मेरी लोकेशन फिर से ढूँढें'}
           onPress={detectLocation}
           variant="secondary"
           loading={detecting}
+          icon="location"
           style={{ marginBottom: Spacing.lg }}
         />
 
-        <Input
-          label="Living Address"
-          value={address}
-          onChangeText={setAddress}
-          multiline
-          placeholder="Your current address"
-        />
-        <Input
-          label="City *"
-          value={city}
-          onChangeText={setCity}
-          placeholder="e.g. Delhi"
-        />
-        <Input
-          label="Pincode"
-          value={pincode}
-          onChangeText={setPincode}
-          keyboardType="number-pad"
-          maxLength={6}
-          placeholder="110001"
-        />
+        <Input label="रहने का पता" value={address} onChangeText={setAddress} multiline placeholder="आपका वर्तमान पता" icon="home-outline" />
+        <Input label="शहर" value={city} onChangeText={setCity} placeholder="जैसे दिल्ली" icon="business-outline" />
+        <Input label="पिनकोड" value={pincode} onChangeText={setPincode} keyboardType="number-pad" maxLength={6} placeholder="110001" icon="mail-outline" />
 
-        <Text style={styles.label}>Preferred Job Cities (select multiple)</Text>
-        <ChipGroup
-          options={TOP_CITIES.map((c) => ({ value: c, label: c }))}
-          selected={preferredCities}
-          onToggle={toggleCity}
-        />
+        <Text style={styles.label}>पसंदीदा शहर (कई चुन सकते हैं)</Text>
+        <ChipGroup options={TOP_CITIES.map((c) => ({ value: c, label: c }))} selected={preferredCities} onToggle={toggleCity} />
 
-        <View style={styles.toggleRow}>
-          <ToggleSwitch value={liveIn} onToggle={() => setLiveIn(!liveIn)} label="Willing to live at employer's house" />
+        <View style={styles.toggleCard}>
+          <Icon name="bed-outline" size={22} color={Colors.textSecondary} style={styles.toggleIcon} />
+          <View style={{ flex: 1, marginRight: 10 }}>
+            <ToggleSwitch value={liveIn} onToggle={() => setLiveIn(!liveIn)} label="नियोक्ता के घर रहने को तैयार" onColor={Colors.primary} />
+          </View>
         </View>
-        <View style={styles.toggleRow}>
-          <ToggleSwitch value={panIndia} onToggle={() => setPanIndia(!panIndia)} label="Open to jobs anywhere in India" />
+        <View style={styles.toggleCard}>
+          <Icon name="globe-outline" size={22} color={Colors.textSecondary} style={styles.toggleIcon} />
+          <View style={{ flex: 1, marginRight: 10 }}>
+            <ToggleSwitch value={panIndia} onToggle={() => setPanIndia(!panIndia)} label="पूरे भारत में काम के लिए तैयार" onColor={Colors.primary} />
+          </View>
         </View>
 
-        <Button title="Save & Continue" onPress={handleSave} loading={isLoading} style={styles.btn} />
+        <Button title="सेव करें और आगे बढ़ें" onPress={handleSave} loading={isLoading} icon="arrow-forward" style={styles.btn} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -176,9 +151,13 @@ export function LocationPreferencesScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
-  inner: { padding: Spacing.xxl },
-  title: { ...Typography.h1, color: Colors.textPrimary, marginBottom: Spacing.lg },
-  label: { ...Typography.caption, color: Colors.textSecondary, marginBottom: Spacing.xs, marginTop: Spacing.md },
-  toggleRow: { marginBottom: Spacing.md },
+  inner: { padding: Spacing.xl, paddingBottom: Spacing.xxxl },
+  label: { ...Typography.captionStrong, color: Colors.textSecondary, marginBottom: Spacing.sm, marginTop: Spacing.md },
+  toggleCard: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: Colors.surface, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border,
+    paddingVertical: Spacing.md, paddingHorizontal: Spacing.lg, marginBottom: Spacing.md,
+  },
+  toggleIcon: { marginRight: Spacing.md },
   btn: { marginTop: Spacing.xl },
 });

@@ -1,19 +1,22 @@
 import React from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
-import { Colors } from '../../theme';
+import { View, ActivityIndicator, Text, StyleSheet } from 'react-native';
+import { Colors, Spacing, Typography } from '../../theme';
 
-export const LoadingSpinner: React.FC = () => (
-  <View style={styles.overlay}>
+interface Props {
+  label?: string;
+  inline?: boolean;
+}
+
+export const LoadingSpinner: React.FC<Props> = ({ label, inline }) => (
+  <View style={[styles.base, inline ? styles.inline : styles.full]}>
     <ActivityIndicator size="large" color={Colors.primary} />
+    {label && <Text style={styles.label}>{label}</Text>}
   </View>
 );
 
 const styles = StyleSheet.create({
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(255,255,255,0.8)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 999,
-  },
+  base: { alignItems: 'center', justifyContent: 'center' },
+  full: { flex: 1, backgroundColor: Colors.background, paddingVertical: Spacing.huge },
+  inline: { paddingVertical: Spacing.xxxl },
+  label: { ...Typography.body, color: Colors.textSecondary, marginTop: Spacing.md },
 });

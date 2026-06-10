@@ -1,18 +1,14 @@
-﻿import React, { useState } from 'react';
-import {
-  View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity,
-} from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAddShortlistMutation } from '../../store/api/employerApi';
-import { Colors } from '../../theme';
-
-const JOB_ICONS: Record<string, string> = {
-  driver: '🚗', security_guard: '🛡️', cook: '🍳', housekeeper: '🏠',
-  delivery: '📦', electrician: '🔧', plumber: '🔩', peon: '📋', sweeper: '🧹', helper: '👤',
-};
-
-function getInitials(name: string) {
-  return (name || 'W').split(' ').slice(0, 2).map((w: string) => w[0]?.toUpperCase() ?? '').join('');
-}
+import { Button } from '../../components/common/Button';
+import { AlertCard } from '../../components/common/AlertCard';
+import { ScreenHeader } from '../../components/common/ScreenHeader';
+import { Avatar } from '../../components/common/Avatar';
+import { JobIcon } from '../../components/common/JobIcon';
+import { Icon } from '../../components/common/Icon';
+import { Colors, Radius, Shadows, Spacing, Typography, jobLabel } from '../../theme';
 
 export function WorkerDetailScreen({ navigation, route }: any) {
   const { worker, requirementId } = route.params ?? {};
@@ -22,8 +18,9 @@ export function WorkerDetailScreen({ navigation, route }: any) {
 
   if (!worker) {
     return (
-      <SafeAreaView style={st.container}>
-        <Text style={{ padding: 20, color: Colors.danger }}>Worker not found</Text>
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <ScreenHeader title="Worker" onBack={() => navigation.goBack()} />
+        <Text style={{ padding: Spacing.xl, color: Colors.dangerText }}>Worker not found</Text>
       </SafeAreaView>
     );
   }
@@ -47,66 +44,51 @@ export function WorkerDetailScreen({ navigation, route }: any) {
     { label: 'Aadhaar', type: 'AADHAAR' },
     { label: 'PAN Card', type: 'PAN' },
     { label: 'Address', type: 'ADDRESS' },
-    { label: 'Criminal BGC', type: 'CRIMINAL' },
+    { label: 'Criminal background', type: 'CRIMINAL' },
   ];
 
   return (
-    <SafeAreaView style={st.container}>
-      <ScrollView contentContainerStyle={st.scroll} showsVerticalScrollIndicator={false}>
-
-        {/* Back */}
-        <TouchableOpacity onPress={() => navigation.goBack()} style={st.backBtn}>
-          <Text style={st.backText}>← Back</Text>
-        </TouchableOpacity>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <ScreenHeader title="Worker Profile" onBack={() => navigation.goBack()} />
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
         {/* Hero */}
-        <View style={st.hero}>
-          <View style={st.avatar}>
-            <Text style={st.avatarText}>{getInitials(worker.full_name)}</Text>
+        <View style={styles.hero}>
+          <Avatar name={worker.full_name ?? 'W'} size={84} color="rgba(255,255,255,0.2)" />
+          <Text style={styles.name}>{worker.full_name}</Text>
+          <View style={styles.skillRow}>
+            <Text style={styles.skillText}>{jobLabel(skill?.skill_type, 'en')} · {skill?.experience_years ?? 0} yrs exp</Text>
           </View>
-          <Text style={st.name}>{worker.full_name}</Text>
-          <View style={st.skillRow}>
-            <Text style={st.skillIcon}>{JOB_ICONS[skill?.skill_type] ?? '💼'}</Text>
-            <Text style={st.skillText}>
-              {skill?.skill_type?.replace(/_/g, ' ') ?? 'General'} · {skill?.experience_years ?? 0} yrs exp
-            </Text>
+          <View style={styles.cityRow}>
+            <Icon name="location-sharp" size={13} color="rgba(255,255,255,0.8)" />
+            <Text style={styles.city}>{worker.location?.city ?? 'Location not set'}</Text>
           </View>
-          <Text style={st.city}>📍 {worker.location?.city ?? 'Location not set'}</Text>
           {isFullyVerified && (
-            <View style={st.verifiedBadge}>
-              <Text style={st.verifiedText}>✅ Fully Verified Profile</Text>
+            <View style={styles.verifiedBadge}>
+              <Icon name="shield-checkmark" size={14} color="#A7F3D0" />
+              <Text style={styles.verifiedText}>Fully Verified Profile</Text>
             </View>
           )}
         </View>
 
-        {/* Stats Row */}
-        <View style={st.statsRow}>
-          <View style={st.stat}>
-            <Text style={st.statNum}>{skill?.experience_years ?? 0}</Text>
-            <Text style={st.statLabel}>Yrs Exp</Text>
-          </View>
-          <View style={st.statDivider} />
-          <View style={st.stat}>
-            <Text style={st.statNum}>{worker.work_history?.length ?? 0}</Text>
-            <Text style={st.statLabel}>Past Jobs</Text>
-          </View>
-          <View style={st.statDivider} />
-          <View style={st.stat}>
-            <Text style={st.statNum}>{verifications.filter((v: any) => v.status === 'VERIFIED').length}</Text>
-            <Text style={st.statLabel}>Verified</Text>
-          </View>
+        {/* Stats */}
+        <View style={styles.statsRow}>
+          <Stat num={skill?.experience_years ?? 0} label="Yrs Exp" />
+          <View style={styles.statDivider} />
+          <Stat num={worker.work_history?.length ?? 0} label="Past Jobs" />
+          <View style={styles.statDivider} />
+          <Stat num={verifications.filter((v: any) => v.status === 'VERIFIED').length} label="Verified" />
         </View>
 
         {/* Skills */}
         {(worker.skills?.length ?? 0) > 0 && (
-          <View style={st.card}>
-            <Text style={st.cardTitle}>Skills</Text>
-            <View style={st.skillTagsRow}>
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Skills</Text>
+            <View style={styles.skillTagsRow}>
               {worker.skills.map((s: any) => (
-                <View key={s.id} style={st.skillTag}>
-                  <Text style={st.skillTagText}>
-                    {JOB_ICONS[s.skill_type] ?? '💼'} {s.skill_type?.replace(/_/g, ' ')} · {s.experience_years} yrs
-                  </Text>
+                <View key={s.id} style={styles.skillChip}>
+                  <JobIcon jobType={s.skill_type} size={28} />
+                  <Text style={styles.skillChipText}>{jobLabel(s.skill_type, 'en')} · {s.experience_years} yrs</Text>
                 </View>
               ))}
             </View>
@@ -114,34 +96,31 @@ export function WorkerDetailScreen({ navigation, route }: any) {
         )}
 
         {/* Verifications */}
-        <View style={st.card}>
-          <Text style={st.cardTitle}>Verification Status</Text>
-          {verifyChecks.map((v) => {
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Verification Status</Text>
+          {verifyChecks.map((v, i) => {
             const done = hasV(v.type) || (isFullyVerified && v.type === 'CRIMINAL');
             return (
-              <View key={v.type} style={st.vRow}>
-                <Text style={st.vLabel}>{v.label}</Text>
-                <View style={[st.vBadge, done ? st.vBadgeDone : st.vBadgePending]}>
-                  <Text style={[st.vBadgeText, done ? { color: '#166534' } : { color: Colors.textSecondary }]}>
-                    {done ? '✓ Verified' : 'Pending'}
-                  </Text>
+              <View key={v.type} style={[styles.vRow, i < verifyChecks.length - 1 && styles.vRowBorder]}>
+                <Text style={styles.vLabel}>{v.label}</Text>
+                <View style={[styles.vBadge, done ? styles.vBadgeDone : styles.vBadgePending]}>
+                  {done && <Icon name="checkmark" size={12} color={Colors.successText} />}
+                  <Text style={[styles.vBadgeText, { color: done ? Colors.successText : Colors.textSecondary }]}>{done ? 'Verified' : 'Pending'}</Text>
                 </View>
               </View>
             );
           })}
         </View>
 
-        {/* Work History */}
+        {/* Work history */}
         {(worker.work_history?.length ?? 0) > 0 && (
-          <View style={st.card}>
-            <Text style={st.cardTitle}>Work History</Text>
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Work History</Text>
             {worker.work_history.map((h: any, i: number) => (
-              <View key={i} style={[st.histItem, i < worker.work_history.length - 1 && st.histItemBorder]}>
-                <Text style={st.histCompany}>{h.employer_name}</Text>
-                <Text style={st.histRole}>{h.role}</Text>
-                <Text style={st.histDur}>
-                  {h.from_date?.slice(0, 7)} — {h.to_date?.slice(0, 7) ?? 'Present'}
-                </Text>
+              <View key={i} style={[styles.histItem, i < worker.work_history.length - 1 && styles.histItemBorder]}>
+                <Text style={styles.histCompany}>{h.employer_name}</Text>
+                <Text style={styles.histRole}>{h.role}</Text>
+                <Text style={styles.histDur}>{h.from_date?.slice(0, 7)} — {h.to_date?.slice(0, 7) ?? 'Present'}</Text>
               </View>
             ))}
           </View>
@@ -149,102 +128,76 @@ export function WorkerDetailScreen({ navigation, route }: any) {
 
         {/* Location */}
         {worker.location && (
-          <View style={st.card}>
-            <Text style={st.cardTitle}>Location</Text>
-            <Text style={st.locationText}>
-              {[worker.location.city, worker.location.state, worker.location.pincode].filter(Boolean).join(', ')}
-            </Text>
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Location</Text>
+            <Text style={styles.locationText}>{[worker.location.city, worker.location.state, worker.location.pincode].filter(Boolean).join(', ')}</Text>
             {worker.is_live_in_ok && (
-              <View style={st.liveInTag}>
-                <Text style={st.liveInText}>🏠 Live-in OK</Text>
-              </View>
+              <View style={styles.liveInTag}><Text style={styles.liveInText}>Live-in OK</Text></View>
             )}
           </View>
         )}
 
-        {/* Error */}
-        {error ? (
-          <View style={st.errorBox}>
-            <Text style={st.errorText}>{error}</Text>
-          </View>
-        ) : null}
+        {error ? <AlertCard type="danger" message={error} /> : null}
 
-        {/* Actions */}
         {shortlisted ? (
-          <View style={st.successBox}>
-            <Text style={st.successText}>✅ Shortlisted! Worker has been notified.</Text>
-          </View>
+          <AlertCard type="success" message="Shortlisted! Worker has been notified." />
         ) : (
-          <View style={st.actionsRow}>
-            <TouchableOpacity
-              style={[st.actionBtn, st.actionBtnSecondary, isLoading && { opacity: 0.6 }]}
-              onPress={handleShortlist}
-              disabled={isLoading}
-            >
-              <Text style={[st.actionBtnText, { color: Colors.primary }]}>
-                {isLoading ? 'Saving...' : '⭐ Shortlist'}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={st.actionBtn}
-              onPress={() => navigation.navigate('HireConfirmed', { workerId: worker.id, requirementId })}
-            >
-              <Text style={st.actionBtnText}>✅ Confirm Hire</Text>
-            </TouchableOpacity>
+          <View style={styles.actionsRow}>
+            <Button title="Shortlist" onPress={handleShortlist} loading={isLoading} variant="secondary" icon="star-outline" style={{ flex: 1 }} />
+            <Button title="Confirm Hire" onPress={() => navigation.navigate('HireConfirmed', { workerId: worker.id, workerName: worker.full_name, requirementId })} variant="accent" icon="checkmark" style={{ flex: 1.4 }} />
           </View>
         )}
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: Spacing.xl }} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-const st = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F0F4F8' },
-  scroll: { padding: 16 },
-  backBtn: { marginBottom: 16 },
-  backText: { fontSize: 16, color: Colors.primary, fontWeight: '600' },
-  hero: { backgroundColor: Colors.primary, borderRadius: 20, padding: 24, alignItems: 'center', marginBottom: 16 },
-  avatar: { width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(255,255,255,0.25)', alignItems: 'center', justifyContent: 'center', marginBottom: 12, borderWidth: 3, borderColor: 'rgba(255,255,255,0.4)' },
-  avatarText: { color: '#fff', fontSize: 28, fontWeight: '800' },
-  name: { color: '#fff', fontSize: 22, fontWeight: '800', marginBottom: 8 },
-  skillRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
-  skillIcon: { fontSize: 20 },
-  skillText: { color: 'rgba(255,255,255,0.9)', fontSize: 15, fontWeight: '600', textTransform: 'capitalize' },
-  city: { color: 'rgba(255,255,255,0.75)', fontSize: 13, marginBottom: 10 },
-  verifiedBadge: { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 6 },
-  verifiedText: { color: '#A7F3D0', fontSize: 13, fontWeight: '700' },
-  statsRow: { backgroundColor: '#fff', borderRadius: 14, padding: 16, flexDirection: 'row', justifyContent: 'space-around', marginBottom: 14, borderWidth: 1, borderColor: '#E2E8F0' },
-  stat: { alignItems: 'center' },
-  statNum: { fontSize: 24, fontWeight: '800', color: Colors.primary },
-  statLabel: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
-  statDivider: { width: 1, backgroundColor: '#E2E8F0' },
-  card: { backgroundColor: '#fff', borderRadius: 14, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: '#E2E8F0' },
-  cardTitle: { fontSize: 16, fontWeight: '700', color: '#1A1A2E', marginBottom: 12 },
-  skillTagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  skillTag: { backgroundColor: Colors.primaryLight, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
-  skillTagText: { fontSize: 13, color: Colors.primary, fontWeight: '600', textTransform: 'capitalize' },
-  vRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-  vLabel: { fontSize: 14, color: Colors.textSecondary },
-  vBadge: { borderRadius: 6, paddingHorizontal: 10, paddingVertical: 3 },
-  vBadgeDone: { backgroundColor: '#DCFCE7' },
-  vBadgePending: { backgroundColor: '#F1F5F9' },
-  vBadgeText: { fontSize: 12, fontWeight: '700' },
+function Stat({ num, label }: { num: number; label: string }) {
+  return (
+    <View style={styles.stat}>
+      <Text style={styles.statNum}>{num}</Text>
+      <Text style={styles.statLabel}>{label}</Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: Colors.background },
+  scroll: { padding: Spacing.lg },
+  hero: { backgroundColor: Colors.primary, borderRadius: Radius.xl, padding: Spacing.xxl, alignItems: 'center', marginBottom: Spacing.lg, ...Shadows.primary },
+  name: { color: '#fff', ...Typography.h1, marginTop: Spacing.md, marginBottom: 6 },
+  skillRow: { marginBottom: 4 },
+  skillText: { color: 'rgba(255,255,255,0.9)', ...Typography.bodyStrong, textTransform: 'capitalize' },
+  cityRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginBottom: Spacing.md },
+  city: { color: 'rgba(255,255,255,0.8)', ...Typography.caption },
+  verifiedBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: Radius.pill, paddingHorizontal: 14, paddingVertical: 7 },
+  verifiedText: { color: '#A7F3D0', ...Typography.captionStrong },
+  statsRow: { backgroundColor: Colors.surface, borderRadius: Radius.lg, padding: Spacing.lg, flexDirection: 'row', justifyContent: 'space-around', marginBottom: Spacing.md, borderWidth: 1, borderColor: Colors.border, ...Shadows.sm },
+  stat: { alignItems: 'center', flex: 1 },
+  statNum: { ...Typography.h1, fontWeight: '800', color: Colors.primary },
+  statLabel: { ...Typography.caption, color: Colors.textSecondary, marginTop: 2 },
+  statDivider: { width: 1, backgroundColor: Colors.border },
+  card: { backgroundColor: Colors.surface, borderRadius: Radius.lg, padding: Spacing.lg, marginBottom: Spacing.md, borderWidth: 1, borderColor: Colors.border, ...Shadows.sm },
+  cardTitle: { ...Typography.h3, color: Colors.textPrimary, marginBottom: Spacing.md },
+  skillTagsRow: { gap: 8 },
+  skillChip: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Colors.surfaceAlt, borderRadius: Radius.md, paddingHorizontal: 8, paddingVertical: 6, marginBottom: 6 },
+  skillChipText: { ...Typography.captionStrong, color: Colors.textPrimary, textTransform: 'capitalize' },
+  vRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 11 },
+  vRowBorder: { borderBottomWidth: 1, borderBottomColor: Colors.border },
+  vLabel: { ...Typography.body, color: Colors.textSecondary },
+  vBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: Radius.sm, paddingHorizontal: 10, paddingVertical: 4 },
+  vBadgeDone: { backgroundColor: Colors.successLight },
+  vBadgePending: { backgroundColor: Colors.surfaceAlt },
+  vBadgeText: { ...Typography.tiny, fontWeight: '700' },
   histItem: { paddingVertical: 10 },
-  histItemBorder: { borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-  histCompany: { fontSize: 15, fontWeight: '700', color: '#1A1A2E' },
-  histRole: { fontSize: 13, color: Colors.textSecondary, marginTop: 2, textTransform: 'capitalize' },
-  histDur: { fontSize: 12, color: Colors.textTertiary, marginTop: 2 },
-  locationText: { fontSize: 15, color: Colors.textPrimary },
-  liveInTag: { backgroundColor: '#EDE9FE', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4, marginTop: 8, alignSelf: 'flex-start' },
-  liveInText: { fontSize: 13, color: '#6B21A8', fontWeight: '600' },
-  errorBox: { backgroundColor: '#FEF2F2', borderRadius: 10, padding: 12, marginBottom: 16, borderLeftWidth: 4, borderLeftColor: '#EF4444' },
-  errorText: { fontSize: 14, color: '#B91C1C' },
-  successBox: { backgroundColor: '#F0FFF4', borderRadius: 14, padding: 16, marginBottom: 16, borderWidth: 1.5, borderColor: '#86EFAC' },
-  successText: { fontSize: 15, fontWeight: '700', color: '#166534' },
-  actionsRow: { flexDirection: 'row', gap: 12, marginTop: 8 },
-  actionBtn: { flex: 1, backgroundColor: Colors.primary, borderRadius: 14, padding: 16, alignItems: 'center' },
-  actionBtnSecondary: { backgroundColor: '#fff', borderWidth: 2, borderColor: Colors.primary },
-  actionBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  histItemBorder: { borderBottomWidth: 1, borderBottomColor: Colors.border },
+  histCompany: { ...Typography.bodyStrong, color: Colors.textPrimary },
+  histRole: { ...Typography.caption, color: Colors.textSecondary, marginTop: 2, textTransform: 'capitalize' },
+  histDur: { ...Typography.tiny, color: Colors.textTertiary, marginTop: 2 },
+  locationText: { ...Typography.body, color: Colors.textPrimary },
+  liveInTag: { backgroundColor: Colors.purpleLight, borderRadius: Radius.sm, paddingHorizontal: 10, paddingVertical: 5, marginTop: Spacing.sm, alignSelf: 'flex-start' },
+  liveInText: { ...Typography.caption, color: Colors.purple, fontWeight: '700' },
+  actionsRow: { flexDirection: 'row', gap: 10, marginTop: Spacing.sm },
 });

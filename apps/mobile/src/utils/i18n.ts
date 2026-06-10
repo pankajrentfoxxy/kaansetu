@@ -9,10 +9,21 @@ const strings: Record<string, Record<Lang, string>> = {
   submit: { hi: 'जमा करें', en: 'Submit' },
   skip: { hi: 'छोड़ें', en: 'Skip' },
   back: { hi: 'वापस', en: 'Back' },
-  logout: { hi: '🚪 लॉगआउट', en: '🚪 Logout' },
+  logout: { hi: 'लॉगआउट', en: 'Logout' },
   loading: { hi: 'लोड हो रहा है...', en: 'Loading...' },
   error: { hi: 'कुछ गलत हुआ', en: 'Something went wrong' },
   retry: { hi: 'फिर कोशिश करें', en: 'Try Again' },
+  cancel: { hi: 'रद्द करें', en: 'Cancel' },
+  save: { hi: 'सेव करें', en: 'Save' },
+  next: { hi: 'आगे बढ़ें', en: 'Next' },
+
+  // Tabs
+  tabHome: { hi: 'होम', en: 'Home' },
+  tabJobs: { hi: 'काम', en: 'Jobs' },
+  tabOffers: { hi: 'ऑफर', en: 'Offers' },
+  tabProfile: { hi: 'प्रोफ़ाइल', en: 'Profile' },
+  tabVerify: { hi: 'जाँच', en: 'Verify' },
+  tabPost: { hi: 'पोस्ट करें', en: 'Post' },
 
   // OTP Screen
   enterMobile: { hi: 'मोबाइल नंबर दर्ज करें', en: 'Enter Mobile Number' },
@@ -22,12 +33,12 @@ const strings: Record<string, Record<Lang, string>> = {
   otpHint: { hi: 'आपके नंबर पर भेजा गया 6 अंकों का OTP', en: '6-digit OTP sent to your number' },
   verifyOtp: { hi: 'OTP जाँचें', en: 'Verify OTP' },
   loginAs: { hi: 'किस रूप में लॉगिन करें?', en: 'Login as?' },
-  worker: { hi: '👷 मज़दूर / कामगार', en: '👷 Worker' },
-  employer: { hi: '🏢 नियोक्ता / मालिक', en: '🏢 Employer' },
+  worker: { hi: 'कामगार', en: 'Worker' },
+  employer: { hi: 'नियोक्ता', en: 'Employer' },
   devOtpHint: { hi: 'टेस्टिंग OTP: 123456', en: 'Testing OTP: 123456' },
 
   // Employer KYC
-  empVerifyTitle: { hi: '🏢 व्यवसाय जाँच', en: '🏢 Business Verification' },
+  empVerifyTitle: { hi: 'व्यवसाय जाँच', en: 'Business Verification' },
   empVerifySubtitle: { hi: 'अपना व्यवसाय सत्यापित करें', en: 'Verify your business' },
   companyName: { hi: 'कंपनी / दुकान का नाम', en: 'Company / Shop Name' },
   entityType: { hi: 'व्यवसाय का प्रकार', en: 'Business Type' },
