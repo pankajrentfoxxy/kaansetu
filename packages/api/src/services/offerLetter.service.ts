@@ -17,10 +17,15 @@ export const offerLetterService = {
 
       doc.on('data', (chunk) => chunks.push(chunk));
       doc.on('end', async () => {
-        const buffer = Buffer.concat(chunks);
-        const key = `offer-letters/${hire.id}.pdf`;
-        const url = await s3Service.upload(key, buffer, 'application/pdf');
-        resolve(url);
+        try {
+          const buffer = Buffer.concat(chunks);
+          const key = `offer-letters/${hire.id}.pdf`;
+          const url = await s3Service.upload(key, buffer, 'application/pdf');
+          resolve(url);
+        } catch (uploadErr) {
+          // Never hang the caller if S3 is misconfigured/unreachable.
+          reject(uploadErr);
+        }
       });
       doc.on('error', reject);
 

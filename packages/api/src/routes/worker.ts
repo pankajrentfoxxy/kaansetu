@@ -455,6 +455,106 @@ workerRoutes.get('/notifications', async (req: AuthRequest, res, next) => {
   } catch (err) { next(err); }
 });
 
+// ── Refer & Earn (points) ───────────────────────────────────────────────────
+const REFERRAL_REWARD = 100;
+const REWARDS = {
+  boost: { cost: 200, days: 7 },
+  pan_india: { cost: 150, days: 30 },
+} as const;
+
+function makeReferralCode(name: string): string {
+  const prefix = (name || 'KAAM').replace(/[^a-zA-Z]/g, '').slice(0, 4).toUpperCase() || 'KAAM';
+  const rand = Math.random().toString(36).slice(2, 7).toUpperCase();
+  return `${prefix}${rand}`;
+}
+
+async function ensureReferralCode(worker: { id: string; full_name: string; referral_code: string | null }) {
+  if (worker.referral_code) return worker.referral_code;
+  for (let i = 0; i < 5; i++) {
+    const code = makeReferralCode(worker.full_name);
+    const exists = await prisma.worker.findUnique({ where: { referral_code: code } });
+    if (!exists) {
+      await prisma.worker.update({ where: { id: worker.id }, data: { referral_code: code } });
+      return code;
+    }
+  }
+  const fallback = `KAAM${worker.id.slice(0, 6).toUpperCase()}`;
+  await prisma.worker.update({ where: { id: worker.id }, data: { referral_code: fallback } });
+  return fallback;
+}
+
+// Referral summary (code, points, perks, history)
+workerRoutes.get('/referral', async (req: AuthRequest, res, next) => {
+  try {
+    const worker = await prisma.worker.findUniqueOrThrow({ where: { user_id: req.user!.id } });
+    const code = await ensureReferralCode(worker);
+    const referralsCount = await prisma.worker.count({ where: { referred_by_code: code } });
+    const history = await prisma.pointTransaction.findMany({
+      where: { worker_id: worker.id }, orderBy: { created_at: 'desc' }, take: 20,
+    });
+    res.json({
+      code,
+      points: worker.points,
+      referrals_count: referralsCount,
+      boost_until: worker.boost_until,
+      pan_india_until: worker.pan_india_until,
+      already_referred: !!worker.referred_by_code,
+      rewards: REWARDS,
+      reward_per_referral: REFERRAL_REWARD,
+      history,
+    });
+  } catch (err) { next(err); }
+});
+
+// Apply someone else's referral code (once). Rewards the referrer.
+workerRoutes.post('/referral/apply', async (req: AuthRequest, res, next) => {
+  try {
+    const code = String(req.body?.code ?? '').trim().toUpperCase();
+    if (!code) { res.status(422).json({ error: 'Referral code is required' }); return; }
+    const worker = await prisma.worker.findUniqueOrThrow({ where: { user_id: req.user!.id } });
+    if (worker.referred_by_code) { res.status(409).json({ error: 'You have already used a referral code' }); return; }
+    const ownCode = await ensureReferralCode(worker);
+    if (code === ownCode) { res.status(422).json({ error: 'You cannot use your own referral code' }); return; }
+    const referrer = await prisma.worker.findUnique({ where: { referral_code: code } });
+    if (!referrer) { res.status(404).json({ error: 'Invalid referral code' }); return; }
+
+    await prisma.$transaction([
+      prisma.worker.update({ where: { id: worker.id }, data: { referred_by_code: code, referral_rewarded: true } }),
+      prisma.worker.update({ where: { id: referrer.id }, data: { points: { increment: REFERRAL_REWARD } } }),
+      prisma.pointTransaction.create({ data: { worker_id: referrer.id, delta: REFERRAL_REWARD, reason: 'Referral joined' } }),
+      prisma.notification.create({
+        data: {
+          type: 'REFERRAL_REWARD', worker_id: referrer.id,
+          title: 'You earned points!',
+          body: `${worker.full_name || 'A worker'} joined with your code. +${REFERRAL_REWARD} points added.`,
+        },
+      }),
+    ]);
+    res.json({ success: true, message: `Referral applied. ${referrer.full_name || 'Your referrer'} earned points.` });
+  } catch (err) { next(err); }
+});
+
+// Redeem points for a perk
+workerRoutes.post('/redeem', async (req: AuthRequest, res, next) => {
+  try {
+    const reward = String(req.body?.reward ?? '') as keyof typeof REWARDS;
+    const cfg = REWARDS[reward];
+    if (!cfg) { res.status(422).json({ error: 'Unknown reward' }); return; }
+    const worker = await prisma.worker.findUniqueOrThrow({ where: { user_id: req.user!.id } });
+    if (worker.points < cfg.cost) { res.status(422).json({ error: 'Not enough points' }); return; }
+    const until = new Date(Date.now() + cfg.days * 24 * 60 * 60 * 1000);
+    const field = reward === 'boost' ? 'boost_until' : 'pan_india_until';
+    const updated = await prisma.worker.update({
+      where: { id: worker.id },
+      data: { points: { decrement: cfg.cost }, [field]: until },
+    });
+    await prisma.pointTransaction.create({
+      data: { worker_id: worker.id, delta: -cfg.cost, reason: reward === 'boost' ? 'Profile boost' : 'Pan-India unlock' },
+    });
+    res.json({ success: true, points: updated.points, boost_until: updated.boost_until, pan_india_until: updated.pan_india_until });
+  } catch (err) { next(err); }
+});
+
 // ── DEV-MODE MOCK KYC ENDPOINTS ──────────────────────────────────────────────
 
 workerRoutes.post('/kyc/mock-selfie', async (req: AuthRequest, res, next) => {

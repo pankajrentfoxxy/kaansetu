@@ -77,21 +77,41 @@ model Worker {
   consent_given_at  DateTime?
   consent_ip        String?
   deleted_at        DateTime?
+
+  // ── Refer & Earn (points) ──
+  referral_code     String?    @unique
+  referred_by_code  String?
+  referral_rewarded Boolean    @default(false)
+  points            Int        @default(0)
+  boost_until       DateTime?
+  pan_india_until   DateTime?
+
   created_at        DateTime   @default(now())
   updated_at        DateTime   @updatedAt
 
-  user              User               @relation(fields: [user_id], references: [id])
-  skills            WorkerSkill[]
-  work_history      WorkHistory[]
-  location          WorkerLocation?
-  documents         WorkerDocument?
-  verifications     WorkerVerification[]
-  background_checks BackgroundCheck[]
-  blocks            WorkerBlock[]
-  matches           Match[]
-  shortlists        Shortlist[]
-  hires             Hire[]
-  notifications     Notification[]
+  user               User               @relation(fields: [user_id], references: [id])
+  skills             WorkerSkill[]
+  work_history       WorkHistory[]
+  location           WorkerLocation?
+  documents          WorkerDocument?
+  verifications      WorkerVerification[]
+  background_checks  BackgroundCheck[]
+  blocks             WorkerBlock[]
+  matches            Match[]
+  shortlists         Shortlist[]
+  hires              Hire[]
+  notifications      Notification[]
+  point_transactions PointTransaction[]
+}
+
+model PointTransaction {
+  id         String   @id @default(uuid())
+  worker_id  String
+  delta      Int
+  reason     String
+  created_at DateTime @default(now())
+
+  worker Worker @relation(fields: [worker_id], references: [id])
 }
 
 enum KycStatus {

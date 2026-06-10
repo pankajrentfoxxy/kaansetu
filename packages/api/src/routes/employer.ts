@@ -233,33 +233,44 @@ employerRoutes.post('/hire', async (req: AuthRequest, res, next) => {
       },
     });
 
-    // Offer letter generation is best-effort — hire succeeds even if PDF fails
-    let pdfUrl: string | undefined;
-    try {
-      pdfUrl = await offerLetterService.generate({
-        id: hire.id,
-        workerName: worker.full_name,
-        companyName: employer.company_name,
-        role: req_?.job_type ?? 'General',
-        salary: Number(offer_salary),
-        startDate: new Date(start_date),
-        city: employer.city ?? '',
-      });
-      if (pdfUrl) {
-        await prisma.hire.update({ where: { id: hire.id }, data: { offer_letter_url: pdfUrl } });
-      }
-    } catch (pdfErr) {
-      console.error('Offer letter generation failed (non-fatal):', pdfErr);
-    }
+    // Respond immediately — the offer letter (PDF + S3 upload) and push are
+    // best-effort side effects that must NOT block or hang the hire response.
+    res.status(201).json({ ...hire, offer_letter_url: null });
 
-    try {
-      const workerUser = await prisma.user.findUnique({ where: { id: worker.user_id } });
-      if (workerUser?.fcm_token) {
-        await fcmService.sendTemplate(workerUser.fcm_token, 'HIRE_CONFIRMED', worker.id, true);
+    // Fire-and-forget: generate the PDF, store its URL, and notify the worker.
+    void (async () => {
+      try {
+        const pdfUrl = await offerLetterService.generate({
+          id: hire.id,
+          workerName: worker.full_name,
+          companyName: employer.company_name,
+          role: req_?.job_type ?? 'General',
+          salary: Number(offer_salary),
+          startDate: new Date(start_date),
+          city: employer.city ?? '',
+        });
+        if (pdfUrl) {
+          await prisma.hire.update({ where: { id: hire.id }, data: { offer_letter_url: pdfUrl } });
+        }
+      } catch (pdfErr) {
+        console.error('Offer letter generation failed (non-fatal):', pdfErr);
       }
-    } catch { /* FCM failure should not fail the hire */ }
-
-    res.status(201).json({ ...hire, offer_letter_url: pdfUrl ?? null });
+      try {
+        const workerUser = await prisma.user.findUnique({ where: { id: worker.user_id } });
+        if (workerUser?.fcm_token) {
+          await fcmService.sendTemplate(workerUser.fcm_token, 'HIRE_CONFIRMED', worker.id, true);
+        }
+        await prisma.notification.create({
+          data: {
+            type: 'OFFER_LETTER_READY',
+            worker_id,
+            title: 'Job Offer Received!',
+            body: `${employer.company_name} has sent you an offer for ${req_?.job_type?.replace(/_/g, ' ') ?? 'a job'}. Tap to review and accept.`,
+            data: { hire_id: hire.id },
+          },
+        });
+      } catch { /* notification/FCM failure must not affect the hire */ }
+    })();
   } catch (err) { next(err); }
 });
 

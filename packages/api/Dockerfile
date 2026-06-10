@@ -25,4 +25,5 @@ RUN npx tsc --skipLibCheck
 
 EXPOSE 3000
 
-CMD ["node", "dist/index.js"]
+# Apply any pending Prisma migrations on startup, then boot the API.
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]
