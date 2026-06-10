@@ -81,6 +81,18 @@ export const workerApi = baseApi.injectEndpoints({
       query: (hireId) => ({ url: `/worker/offers/${hireId}/reject`, method: 'PUT' }),
       invalidatesTags: ['Matches'],
     }),
+    getReferral: builder.query<any, void>({
+      query: () => '/worker/referral',
+      providesTags: ['Referral'],
+    }),
+    applyReferral: builder.mutation<any, { code: string }>({
+      query: (body) => ({ url: '/worker/referral/apply', method: 'POST', body }),
+      invalidatesTags: ['Referral', 'Worker'],
+    }),
+    redeemPoints: builder.mutation<any, { reward: 'boost' | 'pan_india' }>({
+      query: (body) => ({ url: '/worker/redeem', method: 'POST', body }),
+      invalidatesTags: ['Referral', 'Worker'],
+    }),
   }),
 });
 
@@ -105,4 +117,7 @@ export const {
   useGetWorkerOffersQuery,
   useAcceptOfferMutation,
   useRejectOfferMutation,
+  useGetReferralQuery,
+  useApplyReferralMutation,
+  useRedeemPointsMutation,
 } = workerApi;

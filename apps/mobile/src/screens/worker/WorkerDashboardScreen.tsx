@@ -25,6 +25,7 @@ import { Colors, Radius, Shadows, Spacing, Typography, getJobMeta, jobLabel } fr
 import { SecureStore } from '../../utils/storage';
 import { logout } from '../../store/authSlice';
 import { baseApi } from '../../store/api/baseApi';
+import { useT } from '../../utils/i18n';
 
 const APPLIED_KEY = '@kaamsetu_applied_jobs';
 
@@ -45,6 +46,7 @@ function formatDate(dateStr: string) {
 export function WorkerDashboardScreen({ navigation }: any) {
   const dispatch = useDispatch();
   const lang = useSelector((s: RootState) => s.auth.language);
+  const tr = useT();
   const { data: worker, isLoading: profileLoading, refetch } = useGetWorkerProfileQuery();
   const { data: jobs = [], isLoading: jobsLoading, refetch: refetchJobs } = useGetJobsQuery();
   const { data: offers = [], refetch: refetchOffers } = useGetWorkerOffersQuery();
@@ -164,10 +166,10 @@ export function WorkerDashboardScreen({ navigation }: any) {
               <Text style={styles.avatarText}>{getInitials(worker?.full_name ?? '')}</Text>
             </View>
             <View style={styles.heroInfo}>
-              <Text style={styles.heroName} numberOfLines={1}>{worker?.full_name || 'अपना नाम जोड़ें'}</Text>
+              <Text style={styles.heroName} numberOfLines={1}>{worker?.full_name || tr('addYourName')}</Text>
               <View style={styles.heroLocRow}>
                 <Icon name="location-sharp" size={13} color="rgba(255,255,255,0.85)" />
-                <Text style={styles.heroLocation} numberOfLines={1}>{worker?.location?.city ?? 'स्थान सेट करें'}</Text>
+                <Text style={styles.heroLocation} numberOfLines={1}>{worker?.location?.city ?? tr('setLocation')}</Text>
                 {primarySkill && (
                   <View style={styles.skillPill}>
                     <Text style={styles.skillPillText}>{jobLabel(primarySkill, lang)}</Text>
@@ -185,9 +187,9 @@ export function WorkerDashboardScreen({ navigation }: any) {
           </View>
 
           <View style={styles.progressRow}>
-            <Text style={styles.progressLabel}>प्रोफ़ाइल {profilePct}% पूरी</Text>
+            <Text style={styles.progressLabel}>{profilePct}% {tr('profileComplete')}</Text>
             <TouchableOpacity onPress={() => navigation.navigate('PersonalDetails')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Text style={styles.progressEdit}>पूरी करें</Text>
+              <Text style={styles.progressEdit}>{tr('complete')}</Text>
             </TouchableOpacity>
           </View>
           <View style={styles.progressBg}>
@@ -201,7 +203,7 @@ export function WorkerDashboardScreen({ navigation }: any) {
             activeOpacity={0.85}
           >
             <View style={[styles.availDot, { backgroundColor: isOpen ? Colors.success : 'rgba(255,255,255,0.5)' }]} />
-            <Text style={styles.availText}>{isOpen ? 'काम के लिए उपलब्ध हूँ' : 'अभी उपलब्ध नहीं'}</Text>
+            <Text style={styles.availText}>{isOpen ? tr('availableForWork') : tr('notAvailableNow')}</Text>
             <ToggleSwitch value={isOpen} onToggle={() => toggleWork()} onColor={Colors.success} />
           </TouchableOpacity>
         </View>
@@ -213,8 +215,8 @@ export function WorkerDashboardScreen({ navigation }: any) {
               <Icon name="shield-half" size={22} color={Colors.warningDark} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.kycTitle}>पहचान जाँच बाकी है</Text>
-              <Text style={styles.kycSub}>पूरा करें और सभी जॉब अनलॉक करें</Text>
+              <Text style={styles.kycTitle}>{tr('kycPending')}</Text>
+              <Text style={styles.kycSub}>{tr('kycPendingSub')}</Text>
             </View>
             <Icon name="chevron-forward" size={20} color={Colors.warningDark} />
           </TouchableOpacity>
@@ -225,14 +227,14 @@ export function WorkerDashboardScreen({ navigation }: any) {
           <View style={styles.verifiedCard}>
             <View style={styles.verifiedHead}>
               <Icon name="checkmark-circle" size={20} color={Colors.success} />
-              <Text style={styles.verifiedTitle}>पूरी तरह सत्यापित प्रोफ़ाइल</Text>
+              <Text style={styles.verifiedTitle}>{tr('fullyVerified')}</Text>
             </View>
             <View style={styles.verifiedRow}>
               {[
-                { type: 'SELFIE', label: 'सेल्फी' },
-                { type: 'AADHAAR', label: 'आधार' },
-                { type: 'PAN', label: 'पैन' },
-                { type: 'BGC', label: 'पुलिस जाँच' },
+                { type: 'SELFIE', label: lang === 'en' ? 'Selfie' : 'सेल्फी' },
+                { type: 'AADHAAR', label: lang === 'en' ? 'Aadhaar' : 'आधार' },
+                { type: 'PAN', label: lang === 'en' ? 'PAN' : 'पैन' },
+                { type: 'BGC', label: lang === 'en' ? 'Police check' : 'पुलिस जाँच' },
               ].map((b) => (
                 <View key={b.type} style={styles.verifiedChip}>
                   <Icon name="checkmark" size={13} color={Colors.successText} />
@@ -250,8 +252,8 @@ export function WorkerDashboardScreen({ navigation }: any) {
               <Icon name="mail-unread" size={20} color={Colors.primary} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.offerAlertTitle}>{pendingOffers.length} नया जॉब ऑफर</Text>
-              <Text style={styles.offerAlertSub}>देखें और स्वीकार करें</Text>
+              <Text style={styles.offerAlertTitle}>{pendingOffers.length} {pendingOffers.length > 1 ? tr('newJobOffers') : tr('newJobOffer')}</Text>
+              <Text style={styles.offerAlertSub}>{tr('reviewAccept')}</Text>
             </View>
             <Icon name="chevron-forward" size={20} color={Colors.primary} />
           </TouchableOpacity>
@@ -261,12 +263,12 @@ export function WorkerDashboardScreen({ navigation }: any) {
         <View style={styles.tabs}>
           <TouchableOpacity style={[styles.tab, activeTab === 'jobs' && styles.tabActive]} onPress={() => setActiveTab('jobs')} activeOpacity={0.8}>
             <Icon name="briefcase" size={18} color={activeTab === 'jobs' ? Colors.primary : Colors.textTertiary} />
-            <Text style={[styles.tabText, activeTab === 'jobs' && styles.tabTextActive]}>काम</Text>
+            <Text style={[styles.tabText, activeTab === 'jobs' && styles.tabTextActive]}>{tr('tabJobs')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.tab, activeTab === 'offers' && styles.tabActive]} onPress={() => setActiveTab('offers')} activeOpacity={0.8}>
             <Icon name="mail-open" size={18} color={activeTab === 'offers' ? Colors.primary : Colors.textTertiary} />
             <Text style={[styles.tabText, activeTab === 'offers' && styles.tabTextActive]}>
-              ऑफर{pendingOffers.length > 0 ? ` (${pendingOffers.length})` : ''}
+              {tr('tabOffers')}{pendingOffers.length > 0 ? ` (${pendingOffers.length})` : ''}
             </Text>
           </TouchableOpacity>
         </View>
@@ -274,21 +276,21 @@ export function WorkerDashboardScreen({ navigation }: any) {
         {/* ── Jobs ── */}
         {activeTab === 'jobs' && (
           <>
-            <Text style={styles.sectionTitle}>आपके लिए काम</Text>
+            <Text style={styles.sectionTitle}>{tr('jobsForYou')}</Text>
             {!kycDone ? (
               <View style={styles.lockedCard}>
                 <View style={styles.lockedIconWrap}><Icon name="lock-closed" size={28} color={Colors.textTertiary} /></View>
-                <Text style={styles.lockedTitle}>काम लॉक हैं</Text>
-                <Text style={styles.lockedSub}>जॉब देखने के लिए पहचान जाँच पूरी करें</Text>
+                <Text style={styles.lockedTitle}>{tr('jobsLocked')}</Text>
+                <Text style={styles.lockedSub}>{tr('jobsLockedSub')}</Text>
                 <TouchableOpacity style={styles.lockedBtn} onPress={() => navigation.navigate('KycVerification')} activeOpacity={0.9}>
-                  <Text style={styles.lockedBtnText}>जाँच शुरू करें</Text>
+                  <Text style={styles.lockedBtnText}>{tr('startVerification')}</Text>
                   <Icon name="arrow-forward" size={18} color="#fff" />
                 </TouchableOpacity>
               </View>
             ) : jobsLoading ? (
               <LoadingSpinner inline />
             ) : jobs.length === 0 ? (
-              <EmptyState icon="briefcase-outline" message="अभी कोई काम नहीं" subMessage="नए काम आते ही हम आपको सूचित करेंगे।" />
+              <EmptyState icon="briefcase-outline" message={tr('noJobs')} subMessage={tr('noJobsSub')} />
             ) : (
               jobs.map((match: any) => {
                 const req = match.requirement ?? {};
@@ -308,7 +310,7 @@ export function WorkerDashboardScreen({ navigation }: any) {
                       </View>
                       <View style={styles.jobSalaryBox}>
                         <Text style={styles.jobSalary}>{formatSalary(req.salary_min ?? 0)}–{formatSalary(req.salary_max ?? 0)}</Text>
-                        <Text style={styles.jobSalaryPer}>हर महीना</Text>
+                        <Text style={styles.jobSalaryPer}>{tr('perMonth')}</Text>
                       </View>
                     </View>
                     <View style={styles.jobTags}>
@@ -327,7 +329,7 @@ export function WorkerDashboardScreen({ navigation }: any) {
                       {isApplied && (
                         <View style={styles.tagApplied}>
                           <Icon name="checkmark-circle" size={13} color={Colors.successText} />
-                          <Text style={styles.tagAppliedText}>आवेदन किया</Text>
+                          <Text style={styles.tagAppliedText}>{tr('applied')}</Text>
                         </View>
                       )}
                     </View>
@@ -341,9 +343,9 @@ export function WorkerDashboardScreen({ navigation }: any) {
         {/* ── Offers ── */}
         {activeTab === 'offers' && (
           <>
-            <Text style={styles.sectionTitle}>मेरे जॉब ऑफर</Text>
+            <Text style={styles.sectionTitle}>{tr('myJobOffers')}</Text>
             {offers.length === 0 ? (
-              <EmptyState icon="mail-outline" message="अभी कोई ऑफर नहीं" subMessage="नियोक्ता के ऑफर यहाँ दिखेंगे।" />
+              <EmptyState icon="mail-outline" message={tr('noOffers')} subMessage={tr('noOffersSub')} />
             ) : (
               offers.map((offer: any) => {
                 const emp = offer.employer ?? {};
@@ -360,25 +362,25 @@ export function WorkerDashboardScreen({ navigation }: any) {
                       </View>
                       <View style={[styles.offerBadge, isPending ? styles.badgePending : isActive ? styles.badgeActive : styles.badgeRejected]}>
                         <Text style={[styles.offerBadgeText, { color: isPending ? Colors.warningText : isActive ? Colors.successText : Colors.dangerText }]}>
-                          {isPending ? 'इंतज़ार' : isActive ? 'सक्रिय' : 'अस्वीकृत'}
+                          {isPending ? tr('pending') : isActive ? tr('active') : tr('rejected')}
                         </Text>
                       </View>
                     </View>
 
                     <View style={styles.offerBody}>
-                      <DetailRow icon="cash-outline" label="वेतन" value={`₹${Number(offer.offer_salary ?? 0).toLocaleString('en-IN')}/माह`} />
-                      {offer.start_date && <DetailRow icon="calendar-outline" label="शुरू तारीख" value={formatDate(offer.start_date)} />}
-                      {emp.city && <DetailRow icon="location-outline" label="स्थान" value={emp.city} />}
+                      <DetailRow icon="cash-outline" label={tr('salary')} value={`₹${Number(offer.offer_salary ?? 0).toLocaleString('en-IN')}/${tr('perMonth')}`} />
+                      {offer.start_date && <DetailRow icon="calendar-outline" label={tr('startDate')} value={formatDate(offer.start_date)} />}
+                      {emp.city && <DetailRow icon="location-outline" label={tr('location')} value={emp.city} />}
                     </View>
 
                     {isPending && (
                       <View style={styles.offerActions}>
                         <TouchableOpacity style={styles.acceptBtn} onPress={() => handleAcceptOffer(offer.id)} activeOpacity={0.9}>
                           <Icon name="checkmark" size={18} color="#fff" />
-                          <Text style={styles.acceptText}>स्वीकारें</Text>
+                          <Text style={styles.acceptText}>{tr('accept')}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={styles.rejectBtn} onPress={() => handleRejectOffer(offer.id)} activeOpacity={0.9}>
-                          <Text style={styles.rejectText}>अस्वीकारें</Text>
+                          <Text style={styles.rejectText}>{tr('decline')}</Text>
                         </TouchableOpacity>
                       </View>
                     )}
@@ -386,7 +388,7 @@ export function WorkerDashboardScreen({ navigation }: any) {
                     {isActive && (
                       <View style={styles.hiredBanner}>
                         <Icon name="happy-outline" size={18} color={Colors.successText} />
-                        <Text style={styles.hiredText}>आप हायर हो गए! {offer.start_date ? `${formatDate(offer.start_date)} से` : ''}</Text>
+                        <Text style={styles.hiredText}>{tr('hired')} {offer.start_date ? formatDate(offer.start_date) : ''}</Text>
                       </View>
                     )}
                   </View>
@@ -405,14 +407,14 @@ export function WorkerDashboardScreen({ navigation }: any) {
           <View style={[styles.modalSheet, { maxHeight: '75%' }]}>
             <View style={styles.modalHandle} />
             <View style={styles.notifHeader}>
-              <Text style={styles.modalTitle}>सूचनाएँ</Text>
+              <Text style={styles.modalTitle}>{tr('notifications')}</Text>
               <TouchableOpacity onPress={() => setNotifVisible(false)} style={styles.closeBtn}>
                 <Icon name="close" size={20} color={Colors.textSecondary} />
               </TouchableOpacity>
             </View>
             {notifications.length === 0 ? (
               <View style={{ paddingVertical: Spacing.huge }}>
-                <EmptyState icon="notifications-off-outline" message="अभी कोई सूचना नहीं" subMessage="नई सूचनाएँ यहाँ दिखेंगी।" />
+                <EmptyState icon="notifications-off-outline" message={tr('noNotifications')} subMessage={tr('noNotificationsSub')} />
               </View>
             ) : (
               <ScrollView showsVerticalScrollIndicator={false}>
@@ -456,23 +458,23 @@ export function WorkerDashboardScreen({ navigation }: any) {
                     </TouchableOpacity>
                   </View>
                   <View style={styles.modalBody}>
-                    <DetailRow icon="cash-outline" label="वेतन" value={`${formatSalary(req.salary_min ?? 0)} – ${formatSalary(req.salary_max ?? 0)}/माह`} />
-                    {req.city && <DetailRow icon="location-outline" label="स्थान" value={`${req.city}${req.state ? `, ${req.state}` : ''}`} />}
-                    {selectedJob.distance_km != null && <DetailRow icon="walk-outline" label="दूरी" value={`${Number(selectedJob.distance_km).toFixed(1)} किमी`} />}
-                    {req.experience_required != null && <DetailRow icon="briefcase-outline" label="अनुभव" value={`${req.experience_required} साल`} />}
-                    {req.is_live_in_required && <DetailRow icon="home-outline" label="रहना" value="साथ रहना ज़रूरी" />}
+                    <DetailRow icon="cash-outline" label={tr('salary')} value={`${formatSalary(req.salary_min ?? 0)} – ${formatSalary(req.salary_max ?? 0)}/${tr('perMonth')}`} />
+                    {req.city && <DetailRow icon="location-outline" label={tr('location')} value={`${req.city}${req.state ? `, ${req.state}` : ''}`} />}
+                    {selectedJob.distance_km != null && <DetailRow icon="walk-outline" label={tr('distance')} value={`${Number(selectedJob.distance_km).toFixed(1)} ${lang === 'en' ? 'km' : 'किमी'}`} />}
+                    {req.experience_required != null && <DetailRow icon="briefcase-outline" label={tr('experience')} value={`${req.experience_required} ${lang === 'en' ? 'yrs' : 'साल'}`} />}
+                    {req.is_live_in_required && <DetailRow icon="home-outline" label={tr('stayRequired')} value={tr('yes')} />}
                     {req.description ? <Text style={styles.modalDesc}>{req.description}</Text> : null}
                   </View>
 
                   {!isOpen ? (
                     <View style={styles.modalNote}>
                       <Icon name="alert-circle" size={18} color={Colors.dangerText} />
-                      <Text style={styles.modalNoteText}>आवेदन के लिए उपलब्धता चालू करें</Text>
+                      <Text style={styles.modalNoteText}>{tr('setAvailableFirst')}</Text>
                     </View>
                   ) : isApplied ? (
                     <View style={[styles.modalNote, styles.modalNoteOk]}>
                       <Icon name="checkmark-circle" size={18} color={Colors.successText} />
-                      <Text style={[styles.modalNoteText, { color: Colors.successText }]}>आपने आवेदन कर दिया है</Text>
+                      <Text style={[styles.modalNoteText, { color: Colors.successText }]}>{tr('alreadyApplied')}</Text>
                     </View>
                   ) : (
                     <TouchableOpacity
@@ -483,7 +485,7 @@ export function WorkerDashboardScreen({ navigation }: any) {
                     >
                       {applying ? <ActivityIndicator color="#fff" /> : (
                         <>
-                          <Text style={styles.applyBtnText}>आवेदन करें</Text>
+                          <Text style={styles.applyBtnText}>{tr('apply')}</Text>
                           <Icon name="arrow-forward" size={20} color="#fff" />
                         </>
                       )}

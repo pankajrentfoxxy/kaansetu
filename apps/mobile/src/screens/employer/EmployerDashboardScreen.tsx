@@ -185,8 +185,14 @@ export function EmployerDashboardScreen({ navigation }: any) {
           ) : (
             applications.map((app: any) => {
               const worker = app.worker ?? {};
+              const reqId = app.data?.requirement_id ?? app.requirement_id;
               return (
-                <View key={app.id} style={styles.rowCard}>
+                <TouchableOpacity
+                  key={app.id}
+                  style={styles.rowCard}
+                  activeOpacity={0.85}
+                  onPress={() => navigation.navigate('WorkerDetail', { worker, requirementId: reqId })}
+                >
                   <Avatar name={worker.full_name ?? '?'} size={46} />
                   <View style={styles.rowInfo}>
                     <Text style={styles.rowTitle}>{worker.full_name ?? 'Worker'}</Text>
@@ -200,9 +206,12 @@ export function EmployerDashboardScreen({ navigation }: any) {
                   </View>
                   <View style={styles.rowRight}>
                     <StatusBadge status="in_progress" customLabel="Applied" />
-                    {app.created_at && <Text style={styles.matchCount}>{formatDate(app.created_at)}</Text>}
+                    <View style={styles.hireNow}>
+                      <Text style={styles.hireNowText}>View</Text>
+                      <Icon name="chevron-forward" size={13} color={Colors.primary} />
+                    </View>
                   </View>
-                </View>
+                </TouchableOpacity>
               );
             })
           )
@@ -274,7 +283,7 @@ export function EmployerDashboardScreen({ navigation }: any) {
                     <StatusBadge status={sm.s} customLabel={sm.l} />
                     {isOfferSent && (
                       <TouchableOpacity style={styles.esignBtn}
-                        onPress={() => navigation.navigate('HireConfirmed', { workerId: worker.id, workerName: worker.full_name, requirementId: hire.requirement_id, _hireId: hire.id })}>
+                        onPress={() => navigation.navigate('HireConfirmed', { workerId: worker.id, workerName: worker.full_name, requirementId: hire.requirement_id, _hireId: hire.id, offerSalary: hire.offer_salary, startDate: hire.start_date })}>
                         <Icon name="create-outline" size={14} color="#fff" />
                         <Text style={styles.esignBtnText}>E-Sign</Text>
                       </TouchableOpacity>

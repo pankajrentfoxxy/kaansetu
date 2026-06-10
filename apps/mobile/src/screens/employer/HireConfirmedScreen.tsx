@@ -14,9 +14,9 @@ import { Colors, Radius, Spacing, Typography } from '../../theme';
 type Step = 'form' | 'esign' | 'done';
 
 export function HireConfirmedScreen({ navigation, route }: any) {
-  const { workerId, requirementId, workerName, _hireId } = route.params ?? {};
-  const [salary, setSalary] = useState('');
-  const [startDate, setStartDate] = useState('');
+  const { workerId, requirementId, workerName, _hireId, offerSalary, startDate: initialStartDate } = route.params ?? {};
+  const [salary, setSalary] = useState(offerSalary != null ? String(offerSalary) : '');
+  const [startDate, setStartDate] = useState(initialStartDate ? String(initialStartDate).slice(0, 10) : '');
   const [esignName, setEsignName] = useState('');
   const [hireId, setHireId] = useState(_hireId ?? '');
   const [step, setStep] = useState<Step>(_hireId ? 'esign' : 'form');

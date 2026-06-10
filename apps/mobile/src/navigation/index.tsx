@@ -20,6 +20,7 @@ import { WorkHistoryScreen } from '../screens/worker/WorkHistoryScreen';
 import { LocationPreferencesScreen } from '../screens/worker/LocationPreferencesScreen';
 import { KycVerificationScreen } from '../screens/worker/KycVerificationScreen';
 import { WorkerDashboardScreen } from '../screens/worker/WorkerDashboardScreen';
+import { ProfileScreen } from '../screens/worker/ProfileScreen';
 import { ProfileBlockedScreen } from '../screens/worker/ProfileBlockedScreen';
 
 // Employer Screens
@@ -76,6 +77,11 @@ function WorkerTabs() {
         name="KYC"
         component={KycVerificationScreen}
         options={{ tabBarIcon: ({ focused }) => <TabIcon icon="shield-checkmark" label={t('tabVerify', lang)} focused={focused} /> }}
+      />
+      <Tab.Screen
+        name="Profile"
+        component={ProfileScreen}
+        options={{ tabBarIcon: ({ focused }) => <TabIcon icon="person" label={t('tabProfile', lang)} focused={focused} /> }}
       />
     </Tab.Navigator>
   );
