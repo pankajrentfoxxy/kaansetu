@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Animated } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Animated, Linking, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { SecureStore } from '../../utils/storage';
 import { useConfirmHireMutation, useEsignHireMutation } from '../../store/api/employerApi';
 import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
@@ -24,6 +25,15 @@ export function HireConfirmedScreen({ navigation, route }: any) {
 
   const [confirmHire, { isLoading: confirming }] = useConfirmHireMutation();
   const [esignHire, { isLoading: signing }] = useEsignHireMutation();
+
+  const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://gentle-cooperation-production-ca4c.up.railway.app';
+  const openOfferLetter = async () => {
+    if (!hireId) return;
+    try {
+      const token = await SecureStore.getItemAsync('access_token');
+      await Linking.openURL(`${BASE_URL}/api/v1/offer-letter/${hireId}?token=${token}`);
+    } catch { Alert.alert('Error', 'Could not open the offer letter.'); }
+  };
 
   const scaleAnim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -147,6 +157,7 @@ export function HireConfirmedScreen({ navigation, route }: any) {
 
         <AlertCard type="info" title="What happens next?" message="The worker will accept or decline. You'll be notified. Background re-checks run every 6 months." />
 
+        <Button title="View Offer Letter" onPress={openOfferLetter} variant="primary" icon="document-text-outline" style={{ marginTop: Spacing.sm, alignSelf: 'stretch' }} />
         <Button title="Post Another Requirement" onPress={() => navigation.navigate('PostRequirement')} variant="secondary" icon="add" style={{ marginTop: Spacing.sm, alignSelf: 'stretch' }} />
         <Button title="Back to Dashboard" onPress={() => navigation.navigate('EmployerTabs')} variant="ghost" style={{ marginTop: Spacing.sm, alignSelf: 'stretch' }} />
       </ScrollView>

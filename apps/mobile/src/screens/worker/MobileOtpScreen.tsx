@@ -80,10 +80,10 @@ export function MobileOtpScreen({ navigation }: any) {
 
           {step === 'mobile' && (
             <View>
-              <Text style={styles.title}>मोबाइल नंबर डालें</Text>
-              <Text style={styles.subtitle}>मोबाइल नंबर से लॉगिन करें</Text>
+              <Text style={styles.title}>{t('enterMobile', lang)}</Text>
+              <Text style={styles.subtitle}>{t('loginWithMobile', lang)}</Text>
 
-              <Text style={styles.roleLabel}>आप कौन हैं?</Text>
+              <Text style={styles.roleLabel}>{t('whoAreYou', lang)}</Text>
               <View style={styles.roleRow}>
                 <TouchableOpacity
                   style={[styles.roleChip, role === 'WORKER' && styles.roleChipActive]}
@@ -93,7 +93,7 @@ export function MobileOtpScreen({ navigation }: any) {
                   <View style={[styles.roleIcon, { backgroundColor: role === 'WORKER' ? Colors.primary : Colors.surfaceAlt }]}>
                     <Icon name="construct" size={26} color={role === 'WORKER' ? '#fff' : Colors.textTertiary} />
                   </View>
-                  <Text style={[styles.roleChipText, role === 'WORKER' && styles.roleChipTextActive]}>कामगार</Text>
+                  <Text style={[styles.roleChipText, role === 'WORKER' && styles.roleChipTextActive]}>{t('worker', lang)}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.roleChip, role === 'EMPLOYER' && styles.roleChipActive]}
@@ -103,7 +103,7 @@ export function MobileOtpScreen({ navigation }: any) {
                   <View style={[styles.roleIcon, { backgroundColor: role === 'EMPLOYER' ? Colors.primary : Colors.surfaceAlt }]}>
                     <Icon name="business" size={26} color={role === 'EMPLOYER' ? '#fff' : Colors.textTertiary} />
                   </View>
-                  <Text style={[styles.roleChipText, role === 'EMPLOYER' && styles.roleChipTextActive]}>नियोक्ता</Text>
+                  <Text style={[styles.roleChipText, role === 'EMPLOYER' && styles.roleChipTextActive]}>{t('employer', lang)}</Text>
                 </TouchableOpacity>
               </View>
 
@@ -120,7 +120,7 @@ export function MobileOtpScreen({ navigation }: any) {
                   />
                 </View>
               </View>
-              <Button title="OTP भेजें" onPress={sendOtp} loading={loading} icon="arrow-forward" />
+              <Button title={t('sendOtp', lang)} onPress={sendOtp} loading={loading} icon="arrow-forward" />
             </View>
           )}
 
@@ -130,11 +130,11 @@ export function MobileOtpScreen({ navigation }: any) {
                 <Icon name="arrow-back" size={18} color={Colors.primary} />
                 <Text style={styles.backText}>+91 {mobile}</Text>
               </TouchableOpacity>
-              <Text style={styles.title}>OTP डालें</Text>
-              <Text style={styles.subtitle}>आपके नंबर पर भेजा गया 6 अंकों का OTP</Text>
+              <Text style={styles.title}>{t('enterOtp', lang)}</Text>
+              <Text style={styles.subtitle}>{t('otpHint', lang)}</Text>
               <View style={styles.devHint}>
                 <Icon name="flask-outline" size={16} color={Colors.warningText} />
-                <Text style={styles.devHintText}>टेस्टिंग OTP: 123456</Text>
+                <Text style={styles.devHintText}>{t('testingOtp', lang)}</Text>
               </View>
               <Input
                 value={otp}
@@ -145,7 +145,7 @@ export function MobileOtpScreen({ navigation }: any) {
                 icon="keypad-outline"
                 style={styles.otpInput}
               />
-              <Button title="OTP जाँचें" onPress={verifyOtp} loading={loading} icon="checkmark" />
+              <Button title={t('verifyOtp', lang)} onPress={verifyOtp} loading={loading} icon="checkmark" />
             </View>
           )}
 

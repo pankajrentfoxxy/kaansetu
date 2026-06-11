@@ -12,14 +12,7 @@ import { AlertCard } from '../../components/common/AlertCard';
 import { ScreenHeader } from '../../components/common/ScreenHeader';
 import { Icon } from '../../components/common/Icon';
 import { Colors, Radius, Spacing, Typography } from '../../theme';
-
-const LEAVE_REASONS = [
-  { value: 'better_pay', label: 'बेहतर वेतन' },
-  { value: 'family', label: 'पारिवारिक कारण' },
-  { value: 'relocation', label: 'जगह बदली' },
-  { value: 'contract_end', label: 'काम पूरा हुआ' },
-  { value: 'other', label: 'अन्य' },
-];
+import { useT } from '../../utils/i18n';
 
 interface HistoryEntry {
   employer_name: string;
@@ -50,6 +43,14 @@ function parseDate(raw: string): string | null {
 }
 
 export function WorkHistoryScreen({ navigation }: any) {
+  const tr = useT();
+  const LEAVE_REASONS = [
+    { value: 'better_pay', label: tr('betterPay') },
+    { value: 'family', label: tr('familyReason') },
+    { value: 'relocation', label: tr('relocation') },
+    { value: 'contract_end', label: tr('contractEnded') },
+    { value: 'other', label: tr('other') },
+  ];
   const { data: worker } = useGetWorkerProfileQuery();
   const [entries, setEntries] = useState<HistoryEntry[]>([emptyEntry()]);
   const [prefilled, setPrefilled] = useState(false);
@@ -87,9 +88,9 @@ export function WorkHistoryScreen({ navigation }: any) {
 
     for (let i = 0; i < filled.length; i++) {
       const e = filled[i];
-      if (!e.role.trim()) { setError(`नियोक्ता ${i + 1}: पद/काम भरें`); return; }
-      if (!parseDate(e.from_date)) { setError(`नियोक्ता ${i + 1}: सही शुरू तारीख चुनें`); return; }
-      if (e.to_date && !parseDate(e.to_date)) { setError(`नियोक्ता ${i + 1}: सही अंतिम तारीख चुनें या खाली छोड़ें`); return; }
+      if (!e.role.trim()) { setError(`${tr('employerN')} ${i + 1}: ${tr('yourRole')}`); return; }
+      if (!parseDate(e.from_date)) { setError(`${tr('employerN')} ${i + 1}: ${tr('fromDate')}`); return; }
+      if (e.to_date && !parseDate(e.to_date)) { setError(`${tr('employerN')} ${i + 1}: ${tr('toDateHint')}`); return; }
     }
 
     try {
@@ -107,7 +108,7 @@ export function WorkHistoryScreen({ navigation }: any) {
       }).unwrap();
       navigation.navigate('LocationPreferences');
     } catch {
-      setError('सेव नहीं हो सका। फिर कोशिश करें।');
+      setError(tr('saveFailed'));
     }
   };
 
@@ -115,26 +116,26 @@ export function WorkHistoryScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
-      <ScreenHeader title="काम का अनुभव" subtitle="चरण 3 / 7" onBack={() => navigation.goBack()} />
+      <ScreenHeader title={tr('workHistory')} subtitle={`${tr('stepOf')} 3 / 7`} onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={styles.inner} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <ProgressBar current={3} total={7} />
-        <Text style={styles.subtitle}>पिछले नियोक्ता की जानकारी दें</Text>
+        <Text style={styles.subtitle}>{tr('prevEmployerInfo')}</Text>
         {error ? <AlertCard type="danger" message={error} /> : null}
 
         {entries.map((entry, i) => (
           <Card key={i} style={styles.card}>
             <View style={styles.cardHead}>
               <View style={styles.cardNum}><Text style={styles.cardNumText}>{i + 1}</Text></View>
-              <Text style={styles.cardTitle}>नियोक्ता {i + 1}{i === 0 ? '' : ' (वैकल्पिक)'}</Text>
+              <Text style={styles.cardTitle}>{tr('employerN')} {i + 1}{i === 0 ? '' : ` (${tr('optional')})`}</Text>
             </View>
 
-            <Input label="कंपनी / नियोक्ता का नाम" value={entry.employer_name} onChangeText={(v) => update(i, 'employer_name', v)} placeholder="जैसे शर्मा परिवार / ABC Pvt Ltd" icon="business-outline" />
-            <Input label="आपका पद / काम" value={entry.role} onChangeText={(v) => update(i, 'role', v)} placeholder="जैसे ड्राइवर, रसोइया, गार्ड" icon="briefcase-outline" />
-            <DateScrollPicker label="शुरू तारीख" value={entry.from_date} onChange={(v) => update(i, 'from_date', v)} monthOnly maxYear={new Date().getFullYear()} />
-            <DateScrollPicker label="अंतिम तारीख (अभी काम कर रहे हैं तो खाली छोड़ें)" value={entry.to_date} onChange={(v) => update(i, 'to_date', v)} monthOnly maxYear={new Date().getFullYear()} />
-            <Input label="संदर्भ व्यक्ति का नाम (वैकल्पिक)" value={entry.reference_name} onChangeText={(v) => update(i, 'reference_name', v)} placeholder="मैनेजर / मालिक का नाम" icon="person-outline" />
-            <Input label="संदर्भ मोबाइल (वैकल्पिक)" value={entry.reference_mobile} onChangeText={(v) => update(i, 'reference_mobile', v)} keyboardType="phone-pad" placeholder="10 अंकों का नंबर" maxLength={10} icon="call-outline" />
-            <Text style={styles.label}>छोड़ने का कारण</Text>
+            <Input label={tr('companyEmployerName')} value={entry.employer_name} onChangeText={(v) => update(i, 'employer_name', v)} placeholder="ABC Pvt Ltd" icon="business-outline" />
+            <Input label={tr('yourRole')} value={entry.role} onChangeText={(v) => update(i, 'role', v)} placeholder={tr('worker')} icon="briefcase-outline" />
+            <DateScrollPicker label={tr('fromDate')} value={entry.from_date} onChange={(v) => update(i, 'from_date', v)} monthOnly maxYear={new Date().getFullYear()} />
+            <DateScrollPicker label={tr('toDateHint')} value={entry.to_date} onChange={(v) => update(i, 'to_date', v)} monthOnly maxYear={new Date().getFullYear()} />
+            <Input label={`${tr('refName')} (${tr('optional')})`} value={entry.reference_name} onChangeText={(v) => update(i, 'reference_name', v)} placeholder={tr('refName')} icon="person-outline" />
+            <Input label={`${tr('refMobile')} (${tr('optional')})`} value={entry.reference_mobile} onChangeText={(v) => update(i, 'reference_mobile', v)} keyboardType="phone-pad" placeholder="10" maxLength={10} icon="call-outline" />
+            <Text style={styles.label}>{tr('reasonLeaving')}</Text>
             <ChipGroup options={LEAVE_REASONS} selected={[entry.leave_reason]} onToggle={(v) => update(i, 'leave_reason', v)} multiSelect={false} />
           </Card>
         ))}
@@ -142,14 +143,14 @@ export function WorkHistoryScreen({ navigation }: any) {
         {entries.length < 3 && (
           <TouchableOpacity style={styles.addBtn} onPress={() => setEntries((p) => [...p, emptyEntry()])} activeOpacity={0.8}>
             <Icon name="add" size={20} color={Colors.primary} />
-            <Text style={styles.addText}>एक और नियोक्ता जोड़ें</Text>
+            <Text style={styles.addText}>{tr('addEmployer')}</Text>
           </TouchableOpacity>
         )}
 
-        <Button title="सेव करें और आगे बढ़ें" onPress={handleSave} loading={isLoading} icon="arrow-forward" style={styles.btn} />
+        <Button title={tr('saveContinue')} onPress={handleSave} loading={isLoading} icon="arrow-forward" style={styles.btn} />
 
         <TouchableOpacity style={styles.skipBtn} onPress={handleSkip}>
-          <Text style={styles.skipText}>कोई अनुभव नहीं — छोड़ें</Text>
+          <Text style={styles.skipText}>{tr('noExperienceSkip')}</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>

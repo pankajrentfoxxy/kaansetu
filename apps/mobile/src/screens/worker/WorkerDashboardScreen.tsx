@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
-  RefreshControl, TouchableOpacity, Alert, Modal, ActivityIndicator,
+  RefreshControl, TouchableOpacity, Alert, Modal, ActivityIndicator, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -93,6 +93,16 @@ export function WorkerDashboardScreen({ navigation }: any) {
       Alert.alert('त्रुटि', e?.message ?? 'आवेदन नहीं हो सका। फिर कोशिश करें।');
     } finally {
       setApplying(false);
+    }
+  };
+
+  const openOfferLetter = async (hireId: string) => {
+    try {
+      const token = await SecureStore.getItemAsync('access_token');
+      const url = `${BASE_URL}/api/v1/offer-letter/${hireId}?token=${token}`;
+      await Linking.openURL(url);
+    } catch {
+      Alert.alert(tr('error'), 'Could not open the offer letter.');
     }
   };
 
@@ -371,6 +381,11 @@ export function WorkerDashboardScreen({ navigation }: any) {
                       <DetailRow icon="cash-outline" label={tr('salary')} value={`₹${Number(offer.offer_salary ?? 0).toLocaleString('en-IN')}/${tr('perMonth')}`} />
                       {offer.start_date && <DetailRow icon="calendar-outline" label={tr('startDate')} value={formatDate(offer.start_date)} />}
                       {emp.city && <DetailRow icon="location-outline" label={tr('location')} value={emp.city} />}
+                      <TouchableOpacity style={styles.viewLetterBtn} onPress={() => openOfferLetter(offer.id)} activeOpacity={0.8}>
+                        <Icon name="document-text-outline" size={18} color={Colors.primary} />
+                        <Text style={styles.viewLetterText}>{tr('viewOfferLetter')}</Text>
+                        <Icon name="open-outline" size={15} color={Colors.primary} />
+                      </TouchableOpacity>
                     </View>
 
                     {isPending && (
@@ -597,6 +612,8 @@ const styles = StyleSheet.create({
   badgeRejected: { backgroundColor: Colors.dangerLight },
   offerBadgeText: { ...Typography.tiny, fontWeight: '700' },
   offerBody: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm },
+  viewLetterBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: Colors.primaryLight, borderRadius: Radius.md, paddingVertical: 11, marginTop: Spacing.md },
+  viewLetterText: { ...Typography.captionStrong, color: Colors.primary },
   offerActions: { flexDirection: 'row', gap: 10, padding: Spacing.lg, paddingTop: Spacing.md },
   acceptBtn: { flex: 1, flexDirection: 'row', gap: 6, backgroundColor: Colors.success, borderRadius: Radius.md, paddingVertical: 13, alignItems: 'center', justifyContent: 'center' },
   acceptText: { color: '#fff', ...Typography.bodyStrong },

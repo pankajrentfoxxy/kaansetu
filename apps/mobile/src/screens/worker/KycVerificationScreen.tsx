@@ -22,17 +22,15 @@ import { Icon } from '../../components/common/Icon';
 import { BrandLogo } from '../../components/common/BrandLogo';
 import { Colors, Radius, Shadows, Spacing, Typography } from '../../theme';
 import { SecureStore } from '../../utils/storage';
+import { useT } from '../../utils/i18n';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://gentle-cooperation-production-ca4c.up.railway.app';
 const IS_DEV = __DEV__ || process.env.NODE_ENV !== 'production' || process.env.EXPO_PUBLIC_DEV_MODE === 'true';
 
-const STEPS = [
-  { id: 'SELFIE', icon: 'camera', title: 'अपना फोटो लें', hint: 'सेल्फी लेकर पहचान करें' },
-  { id: 'ADDRESS', icon: 'home', title: 'पता दर्ज करें', hint: 'शहर, राज्य और पिनकोड भरें' },
-  { id: 'AADHAAR', icon: 'card', title: 'आधार कार्ड जोड़ें', hint: 'DigiLocker से जोड़ें' },
-  { id: 'PAN', icon: 'document-text', title: 'PAN कार्ड जाँच', hint: 'PAN नंबर डालें' },
-  { id: 'BGC', icon: 'shield-checkmark', title: 'बैकग्राउंड जाँच', hint: '24-48 घंटे में पूरा होगा' },
-] as const;
+const STEP_IDS = ['SELFIE', 'ADDRESS', 'AADHAAR', 'PAN', 'BGC'] as const;
+const STEP_ICONS: Record<string, string> = {
+  SELFIE: 'camera', ADDRESS: 'home', AADHAAR: 'card', PAN: 'document-text', BGC: 'shield-checkmark',
+};
 
 function getActiveStep(verifications: any[], kycStatus: string): number {
   const verified = (type: string) => verifications.some((v: any) => v.check_type === type && v.status === 'VERIFIED');
@@ -45,6 +43,12 @@ function getActiveStep(verifications: any[], kycStatus: string): number {
 }
 
 export function KycVerificationScreen({ navigation }: any) {
+  const tr = useT();
+  const STEP_TITLES: Record<string, string> = {
+    SELFIE: tr('takePhoto'), ADDRESS: tr('enterAddress'), AADHAAR: tr('linkAadhaar'),
+    PAN: tr('verifyPanBtn'), BGC: tr('startCheck'),
+  };
+  const STEPS = STEP_IDS.map((id) => ({ id, icon: STEP_ICONS[id], title: STEP_TITLES[id] }));
   const { data: worker, refetch } = useGetWorkerProfileQuery();
   const [error, setError] = useState('');
 
@@ -146,17 +150,17 @@ export function KycVerificationScreen({ navigation }: any) {
           <View style={styles.successIcon}>
             <Icon name="checkmark-circle" size={72} color={Colors.success} />
           </View>
-          <Text style={styles.successTitle}>बधाई हो!</Text>
-          <Text style={styles.successBody}>आपकी पहचान पूरी तरह सत्यापित हो गई है। अब आप सभी काम देख सकते हैं।</Text>
+          <Text style={styles.successTitle}>{tr('congrats')}</Text>
+          <Text style={styles.successBody}>{tr('fullyVerifiedBody')}</Text>
           <View style={styles.successBadges}>
-            {['सेल्फी', 'पता', 'आधार', 'पैन', 'पुलिस जाँच'].map((b) => (
-              <View key={b} style={styles.successBadge}>
+            {STEP_IDS.map((id) => (
+              <View key={id} style={styles.successBadge}>
                 <Icon name="checkmark" size={13} color={Colors.successText} />
-                <Text style={styles.successBadgeText}>{b}</Text>
+                <Text style={styles.successBadgeText}>{STEP_TITLES[id]}</Text>
               </View>
             ))}
           </View>
-          <Button title="डैशबोर्ड पर जाएं" onPress={() => navigation.navigate('WorkerTabs')} icon="arrow-forward" style={styles.successBtn} />
+          <Button title={tr('goToDashboard')} onPress={() => navigation.navigate('WorkerTabs')} icon="arrow-forward" style={styles.successBtn} />
         </View>
       </SafeAreaView>
     );
@@ -164,13 +168,13 @@ export function KycVerificationScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <ScreenHeader title="पहचान सत्यापन" subtitle={`चरण ${activeStep + 1} / 5`} onBack={() => navigation.goBack()} />
+      <ScreenHeader title={tr('identityVerification')} subtitle={`${tr('stepOf')} ${activeStep + 1} / 5`} onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={styles.inner} showsVerticalScrollIndicator={false}>
         <ProgressBar current={activeStep + 1} total={5} />
-        <Text style={styles.hint}>सभी 5 चरण पूरे करें — काम पाने के लिए ज़रूरी है</Text>
+        <Text style={styles.hint}>{tr('completeAll5')}</Text>
 
         {error ? <AlertCard type="danger" message={error} /> : null}
-        {IS_DEV && <AlertCard type="info" message="DEV MODE: टेस्ट KYC चालू — कोई असली API कॉल नहीं" />}
+        {IS_DEV && <AlertCard type="info" message="DEV MODE: test KYC active — no real API calls" />}
 
         {STEPS.map((step, index) => {
           const status = getStepStatus(index);
@@ -198,40 +202,39 @@ export function KycVerificationScreen({ navigation }: any) {
               <View style={[styles.stepCard, isActive && styles.stepCardActive, isDone && styles.stepCardDone]}>
                 <View style={styles.stepHeadRow}>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.stepNumber}>चरण {index + 1}</Text>
+                    <Text style={styles.stepNumber}>{tr('stepOf')} {index + 1}</Text>
                     <Text style={styles.stepTitle}>{step.title}</Text>
                   </View>
                   {isDone && (
                     <View style={styles.doneTag}>
-                      <Text style={styles.doneTagText}>पूरा</Text>
+                      <Text style={styles.doneTagText}>{tr('done')}</Text>
                     </View>
                   )}
                 </View>
-                {!isDone && <Text style={styles.stepHint}>{step.hint}</Text>}
 
                 {isActive && step.id === 'SELFIE' && (
-                  <Button title="फोटो लें" onPress={handleSelfie} loading={mockSelfieLoading} icon="camera" style={styles.stepBtn} />
+                  <Button title={tr('takePhoto')} onPress={handleSelfie} loading={mockSelfieLoading} icon="camera" style={styles.stepBtn} />
                 )}
 
                 {isActive && step.id === 'ADDRESS' && (
                   <View style={styles.formBlock}>
-                    <Input label="शहर" value={city} onChangeText={setCity} placeholder="जैसे: Mumbai" icon="business-outline" />
-                    <Input label="राज्य" value={state} onChangeText={setState} placeholder="जैसे: Maharashtra" icon="map-outline" />
-                    <Input label="पिनकोड" value={pincode} onChangeText={setPincode} placeholder="400001" keyboardType="number-pad" maxLength={6} icon="mail-outline" />
+                    <Input label={tr('city')} value={city} onChangeText={setCity} placeholder="Mumbai" icon="business-outline" />
+                    <Input label={tr('state')} value={state} onChangeText={setState} placeholder="Maharashtra" icon="map-outline" />
+                    <Input label={tr('pincode')} value={pincode} onChangeText={setPincode} placeholder="400001" keyboardType="number-pad" maxLength={6} icon="mail-outline" />
                     {addressError ? <Text style={styles.errorText}>{addressError}</Text> : null}
-                    <Button title="पता सेव करें" onPress={handleAddress} loading={locationLoading || mockAddressLoading} icon="checkmark" style={styles.stepBtn} />
+                    <Button title={tr('saveAddress')} onPress={handleAddress} loading={locationLoading || mockAddressLoading} icon="checkmark" style={styles.stepBtn} />
                   </View>
                 )}
 
                 {isActive && step.id === 'AADHAAR' && (
-                  <Button title="आधार जोड़ें" onPress={handleAadhaar} loading={mockAadhaarLoading} icon="card" style={styles.stepBtn} />
+                  <Button title={tr('linkAadhaar')} onPress={handleAadhaar} loading={mockAadhaarLoading} icon="card" style={styles.stepBtn} />
                 )}
 
                 {isActive && step.id === 'PAN' && (
                   <View style={styles.formBlock}>
                     {!IS_DEV && (
                       <Input
-                        label="PAN नंबर"
+                        label={tr('verifyPanBtn')}
                         value={panNumber}
                         onChangeText={(v) => { setPanNumber(v.toUpperCase()); setPanError(''); }}
                         placeholder="ABCDE1234F"
@@ -241,15 +244,15 @@ export function KycVerificationScreen({ navigation }: any) {
                         error={panError || undefined}
                       />
                     )}
-                    <Button title="PAN जाँचें" onPress={handlePan} loading={panLoading || mockPanLoading} icon="checkmark" style={styles.stepBtn} />
+                    <Button title={tr('verifyPanBtn')} onPress={handlePan} loading={panLoading || mockPanLoading} icon="checkmark" style={styles.stepBtn} />
                   </View>
                 )}
 
                 {isActive && step.id === 'BGC' && (
                   kycStatus === 'BGC_INITIATED' ? (
-                    <AlertCard type="info" message="जाँच चल रही है — 24-48 घंटे में पूरा होगा" />
+                    <AlertCard type="info" message={tr('bgcInProgress')} />
                   ) : (
-                    <Button title="जाँच शुरू करें" onPress={handleBgc} loading={bgcLoading || mockBgcLoading} icon="shield-checkmark" style={styles.stepBtn} />
+                    <Button title={tr('startCheck')} onPress={handleBgc} loading={bgcLoading || mockBgcLoading} icon="shield-checkmark" style={styles.stepBtn} />
                   )
                 )}
               </View>

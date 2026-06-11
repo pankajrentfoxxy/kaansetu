@@ -10,6 +10,7 @@ import { employerRoutes } from './routes/employer';
 import { requirementsRoutes } from './routes/requirements';
 import { matchesRoutes } from './routes/matches';
 import { adminRoutes } from './routes/admin';
+import { offerLetterRoutes } from './routes/offerLetter';
 import { webhookRoutes } from './routes/webhooks';
 import { logger } from './utils/logger';
 import './jobs/scheduler';
@@ -54,6 +55,7 @@ app.use('/api/v1/employer', employerRoutes);
 app.use('/api/v1/requirements', requirementsRoutes);
 app.use('/api/v1/matches', matchesRoutes);
 app.use('/api/v1/admin', adminRoutes);
+app.use('/api/v1/offer-letter', offerLetterRoutes);
 app.use('/api/v1/webhooks', webhookRoutes);
 
 app.use(errorHandler);

@@ -11,23 +11,23 @@ import { AlertCard } from '../../components/common/AlertCard';
 import { ScreenHeader } from '../../components/common/ScreenHeader';
 import { Icon } from '../../components/common/Icon';
 import { Colors, Spacing, Typography } from '../../theme';
-
-const GENDER_OPTIONS = [
-  { value: 'M', label: 'पुरुष' },
-  { value: 'F', label: 'महिला' },
-  { value: 'O', label: 'अन्य' },
-];
-
-const EDUCATION_OPTIONS = [
-  { value: 'none', label: 'कोई नहीं' },
-  { value: 'class5', label: 'कक्षा 5' },
-  { value: '10th', label: '10वीं पास' },
-  { value: '12th', label: '12वीं पास' },
-  { value: 'graduate', label: 'ग्रेजुएट' },
-  { value: 'postgraduate', label: 'पोस्ट-ग्रेजुएट' },
-];
+import { useT } from '../../utils/i18n';
 
 export function PersonalDetailsScreen({ navigation }: any) {
+  const tr = useT();
+  const GENDER_OPTIONS = [
+    { value: 'M', label: tr('male') },
+    { value: 'F', label: tr('female') },
+    { value: 'O', label: tr('other') },
+  ];
+  const EDUCATION_OPTIONS = [
+    { value: 'none', label: tr('eduNone') },
+    { value: 'class5', label: tr('eduClass5') },
+    { value: '10th', label: tr('edu10') },
+    { value: '12th', label: tr('edu12') },
+    { value: 'graduate', label: tr('eduGrad') },
+    { value: 'postgraduate', label: tr('eduPostgrad') },
+  ];
   const { data: worker } = useGetWorkerProfileQuery();
   const [name, setName] = useState('');
   const [dob, setDob] = useState('');
@@ -50,7 +50,7 @@ export function PersonalDetailsScreen({ navigation }: any) {
   }, [worker, prefilled]);
 
   const handleSave = async () => {
-    if (!name.trim()) { setError('कृपया अपना नाम दर्ज करें'); return; }
+    if (!name.trim()) { setError(tr('nameRequired')); return; }
     setError('');
     try {
       await updatePersonal({
@@ -62,13 +62,13 @@ export function PersonalDetailsScreen({ navigation }: any) {
       }).unwrap();
       navigation.navigate('OccupationSkills');
     } catch {
-      setError('सेव नहीं हो सका। फिर कोशिश करें।');
+      setError(tr('saveFailed'));
     }
   };
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
-      <ScreenHeader title="व्यक्तिगत जानकारी" subtitle="चरण 1 / 7" onBack={() => navigation.goBack()} />
+      <ScreenHeader title={tr('personalDetails')} subtitle={`${tr('stepOf')} 1 / 7`} onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={styles.inner} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <ProgressBar current={1} total={7} />
 
@@ -81,20 +81,20 @@ export function PersonalDetailsScreen({ navigation }: any) {
               <Icon name="camera" size={15} color="#fff" />
             </View>
           </View>
-          <Text style={styles.photoLabel}>फोटो जोड़ें</Text>
+          <Text style={styles.photoLabel}>{tr('addPhoto')}</Text>
         </TouchableOpacity>
 
-        <Input label="पूरा नाम" value={name} onChangeText={setName} placeholder="आधार के अनुसार" icon="person-outline" />
-        <Input label="जन्म तिथि" value={dob} onChangeText={setDob} placeholder="1990-01-15" keyboardType="number-pad" icon="calendar-outline" hint="साल-महीना-दिन" />
-        <Input label="पिता / पति का नाम" value={fatherName} onChangeText={setFatherName} placeholder="वैकल्पिक" icon="people-outline" />
+        <Input label={tr('fullName')} value={name} onChangeText={setName} placeholder={tr('asPerAadhaar')} icon="person-outline" />
+        <Input label={tr('dateOfBirth')} value={dob} onChangeText={setDob} placeholder="1990-01-15" keyboardType="number-pad" icon="calendar-outline" hint={tr('dobHint')} />
+        <Input label={tr('fatherHusbandName')} value={fatherName} onChangeText={setFatherName} placeholder={tr('optional')} icon="people-outline" />
 
-        <Text style={styles.label}>लिंग</Text>
+        <Text style={styles.label}>{tr('gender')}</Text>
         <ChipGroup options={GENDER_OPTIONS} selected={gender} onToggle={(v) => setGender([v])} multiSelect={false} />
 
-        <Text style={styles.label}>शिक्षा</Text>
+        <Text style={styles.label}>{tr('education')}</Text>
         <ChipGroup options={EDUCATION_OPTIONS} selected={education} onToggle={(v) => setEducation([v])} multiSelect={false} />
 
-        <Button title="सेव करें और आगे बढ़ें" onPress={handleSave} loading={isLoading} icon="arrow-forward" style={styles.btn} />
+        <Button title={tr('saveContinue')} onPress={handleSave} loading={isLoading} icon="arrow-forward" style={styles.btn} />
       </ScrollView>
     </SafeAreaView>
   );

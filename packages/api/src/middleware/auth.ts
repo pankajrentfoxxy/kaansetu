@@ -7,12 +7,17 @@ export interface AuthRequest extends Request {
 
 export function authenticate(req: AuthRequest, res: Response, next: NextFunction): void {
   const header = req.headers.authorization;
-  if (!header?.startsWith('Bearer ')) {
+  // Accept token from the Authorization header, or from a `token` query param
+  // (used for direct links like the offer-letter PDF, which open in a browser/viewer).
+  const token = header?.startsWith('Bearer ')
+    ? header.slice(7)
+    : (typeof req.query.token === 'string' ? req.query.token : undefined);
+  if (!token) {
     res.status(401).json({ error: 'Missing token' });
     return;
   }
   try {
-    const payload = verifyAccessToken(header.slice(7));
+    const payload = verifyAccessToken(token);
     req.user = { id: payload.sub, role: payload.role };
     next();
   } catch (err: any) {

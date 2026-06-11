@@ -12,6 +12,7 @@ import { AlertCard } from '../../components/common/AlertCard';
 import { ScreenHeader } from '../../components/common/ScreenHeader';
 import { Icon } from '../../components/common/Icon';
 import { Colors, Radius, Spacing, Typography } from '../../theme';
+import { useT } from '../../utils/i18n';
 
 const TOP_CITIES = [
   'Delhi', 'Mumbai', 'Bangalore', 'Hyderabad', 'Chennai',
@@ -21,6 +22,7 @@ const TOP_CITIES = [
 ];
 
 export function LocationPreferencesScreen({ navigation }: any) {
+  const tr = useT();
   const { data: worker } = useGetWorkerProfileQuery();
   const [address, setAddress] = useState('');
   const [city, setCity] = useState('');
@@ -63,7 +65,7 @@ export function LocationPreferencesScreen({ navigation }: any) {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        setError('लोकेशन की अनुमति नहीं मिली — नीचे खुद भरें');
+        setError(tr('locationDenied'));
         return;
       }
       const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
@@ -78,7 +80,7 @@ export function LocationPreferencesScreen({ navigation }: any) {
         setLocationDetected(true);
       }
     } catch {
-      setError('लोकेशन नहीं मिली — नीचे खुद भरें');
+      setError(tr('locationDenied'));
     } finally {
       setDetecting(false);
     }
@@ -100,22 +102,22 @@ export function LocationPreferencesScreen({ navigation }: any) {
       }).unwrap();
       navigation.navigate('KycVerification');
     } catch {
-      setError('सेव नहीं हो सका। फिर कोशिश करें।');
+      setError(tr('saveFailed'));
     }
   };
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
-      <ScreenHeader title="जगह और पसंद" subtitle="चरण 4 / 7" onBack={() => navigation.goBack()} />
+      <ScreenHeader title={tr('locationPrefsTitle')} subtitle={`${tr('stepOf')} 4 / 7`} onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={styles.inner} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <ProgressBar current={4} total={7} />
 
-        {detecting && <AlertCard type="info" message="आपकी लोकेशन ढूँढी जा रही है..." />}
-        {locationDetected && !detecting && <AlertCard type="success" message={`लोकेशन मिल गई: ${city || address}`} />}
+        {detecting && <AlertCard type="info" message={tr('detectingLocation')} />}
+        {locationDetected && !detecting && <AlertCard type="success" message={`${tr('locationFound')}: ${city || address}`} />}
         {error ? <AlertCard type="danger" message={error} /> : null}
 
         <Button
-          title={detecting ? 'ढूँढ रहे हैं...' : 'मेरी लोकेशन फिर से ढूँढें'}
+          title={detecting ? tr('detecting') : tr('redetectLocation')}
           onPress={detectLocation}
           variant="secondary"
           loading={detecting}
@@ -123,27 +125,27 @@ export function LocationPreferencesScreen({ navigation }: any) {
           style={{ marginBottom: Spacing.lg }}
         />
 
-        <Input label="रहने का पता" value={address} onChangeText={setAddress} multiline placeholder="आपका वर्तमान पता" icon="home-outline" />
-        <Input label="शहर" value={city} onChangeText={setCity} placeholder="जैसे दिल्ली" icon="business-outline" />
-        <Input label="पिनकोड" value={pincode} onChangeText={setPincode} keyboardType="number-pad" maxLength={6} placeholder="110001" icon="mail-outline" />
+        <Input label={tr('livingAddress')} value={address} onChangeText={setAddress} multiline placeholder={tr('currentAddress')} icon="home-outline" />
+        <Input label={tr('city')} value={city} onChangeText={setCity} placeholder="Delhi" icon="business-outline" />
+        <Input label={tr('pincode')} value={pincode} onChangeText={setPincode} keyboardType="number-pad" maxLength={6} placeholder="110001" icon="mail-outline" />
 
-        <Text style={styles.label}>पसंदीदा शहर (कई चुन सकते हैं)</Text>
+        <Text style={styles.label}>{tr('preferredCities')}</Text>
         <ChipGroup options={TOP_CITIES.map((c) => ({ value: c, label: c }))} selected={preferredCities} onToggle={toggleCity} />
 
         <View style={styles.toggleCard}>
           <Icon name="bed-outline" size={22} color={Colors.textSecondary} style={styles.toggleIcon} />
           <View style={{ flex: 1, marginRight: 10 }}>
-            <ToggleSwitch value={liveIn} onToggle={() => setLiveIn(!liveIn)} label="नियोक्ता के घर रहने को तैयार" onColor={Colors.primary} />
+            <ToggleSwitch value={liveIn} onToggle={() => setLiveIn(!liveIn)} label={tr('willingLiveIn')} onColor={Colors.primary} />
           </View>
         </View>
         <View style={styles.toggleCard}>
           <Icon name="globe-outline" size={22} color={Colors.textSecondary} style={styles.toggleIcon} />
           <View style={{ flex: 1, marginRight: 10 }}>
-            <ToggleSwitch value={panIndia} onToggle={() => setPanIndia(!panIndia)} label="पूरे भारत में काम के लिए तैयार" onColor={Colors.primary} />
+            <ToggleSwitch value={panIndia} onToggle={() => setPanIndia(!panIndia)} label={tr('openPanIndia')} onColor={Colors.primary} />
           </View>
         </View>
 
-        <Button title="सेव करें और आगे बढ़ें" onPress={handleSave} loading={isLoading} icon="arrow-forward" style={styles.btn} />
+        <Button title={tr('saveContinue')} onPress={handleSave} loading={isLoading} icon="arrow-forward" style={styles.btn} />
       </ScrollView>
     </SafeAreaView>
   );
