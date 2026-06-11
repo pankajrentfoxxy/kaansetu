@@ -286,6 +286,7 @@ model Employer {
   contact_mobile     String?
   kyc_status         EmployerKycStatus @default(PENDING)
   is_active          Boolean           @default(true)
+  contact_unlocks    Int               @default(0)
   deleted_at         DateTime?
   created_at         DateTime          @default(now())
   updated_at         DateTime          @updatedAt
@@ -339,6 +340,10 @@ model Requirement {
   min_experience_years Int               @default(0)
   start_date           DateTime?
   status               RequirementStatus @default(ACTIVE)
+  is_featured          Boolean           @default(false)
+  is_urgent            Boolean           @default(false)
+  promo_note           String?
+  featured_until       DateTime?
   created_at           DateTime          @default(now())
   updated_at           DateTime          @updatedAt
   expires_at           DateTime

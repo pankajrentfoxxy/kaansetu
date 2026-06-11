@@ -236,3 +236,74 @@ adminRoutes.get('/case-alerts', async (req, res, next) => {
     res.json(alerts);
   } catch (err) { next(err); }
 });
+
+// ── Job postings ─────────────────────────────────────────────────────────────
+adminRoutes.get('/requirements', async (req, res, next) => {
+  try {
+    const page = Number(req.query.page ?? 1);
+    const limit = 30;
+    const requirements = await prisma.requirement.findMany({
+      include: { employer: { select: { company_name: true, city: true } }, _count: { select: { matches: true, hires: true } } },
+      orderBy: [{ is_featured: 'desc' }, { created_at: 'desc' }],
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+    const total = await prisma.requirement.count();
+    res.json({ requirements, total, page, pages: Math.ceil(total / limit) });
+  } catch (err) { next(err); }
+});
+
+// Promote a job posting: featured / urgent badge + optional note + days live
+adminRoutes.post('/requirements/:id/promote', async (req: AuthRequest, res, next) => {
+  try {
+    const { is_featured, is_urgent, promo_note, days } = req.body ?? {};
+    const featured_until = is_featured && days
+      ? new Date(Date.now() + Number(days) * 24 * 60 * 60 * 1000)
+      : (is_featured ? undefined : null);
+    const updated = await prisma.requirement.update({
+      where: { id: req.params.id },
+      data: {
+        is_featured: !!is_featured,
+        is_urgent: !!is_urgent,
+        promo_note: promo_note ?? null,
+        ...(featured_until !== undefined ? { featured_until } : {}),
+      },
+    });
+    await logAudit(req, 'PROMOTE_REQUIREMENT', req.params.id, 'REQUIREMENT', { is_featured, is_urgent });
+    res.json({ success: true, requirement: updated });
+  } catch (err) { next(err); }
+});
+
+// Grant an employer extra worker-contact unlocks (paid feature, admin-tracked)
+adminRoutes.post('/employers/:id/grant-contacts', async (req: AuthRequest, res, next) => {
+  try {
+    const count = Number(req.body?.count ?? 0);
+    const updated = await prisma.employer.update({
+      where: { id: req.params.id },
+      data: { contact_unlocks: { increment: count } },
+    });
+    await logAudit(req, 'GRANT_CONTACTS', req.params.id, 'EMPLOYER', { count });
+    res.json({ success: true, contact_unlocks: updated.contact_unlocks });
+  } catch (err) { next(err); }
+});
+
+// Promotions overview: featured/urgent posts + employers with granted contacts
+adminRoutes.get('/promotions', async (_req, res, next) => {
+  try {
+    const [featured, employersWithUnlocks] = await Promise.all([
+      prisma.requirement.findMany({
+        where: { OR: [{ is_featured: true }, { is_urgent: true }] },
+        include: { employer: { select: { company_name: true, city: true } } },
+        orderBy: { created_at: 'desc' },
+        take: 50,
+      }),
+      prisma.employer.findMany({
+        where: { contact_unlocks: { gt: 0 } },
+        select: { id: true, company_name: true, city: true, contact_unlocks: true },
+        orderBy: { contact_unlocks: 'desc' },
+        take: 50,
+      }),
+    ]);
+    res.json({ featured, employersWithUnlocks });
+  } catch (err) { next(err); }
+});

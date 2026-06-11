@@ -79,6 +79,35 @@ authRoutes.post('/verify-otp', loginRateLimit, validate(VerifyOtpSchema), async 
   } catch (err) { next(err); }
 });
 
+// Admin login — email + password from env (ADMIN_EMAIL / ADMIN_PASSWORD).
+// Upserts a single ADMIN user so issued tokens map to a real user id.
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? 'admin@kaamdhaam.com';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? 'kaamdhaam@admin1';
+const ADMIN_MOBILE = process.env.ADMIN_MOBILE ?? '9999900000';
+
+authRoutes.post('/admin-login', loginRateLimit, async (req, res, next) => {
+  try {
+    const { email, password } = req.body ?? {};
+    if (email !== ADMIN_EMAIL || password !== ADMIN_PASSWORD) {
+      res.status(401).json({ error: 'Invalid email or password' });
+      return;
+    }
+    let user = await prisma.user.findUnique({ where: { mobile: ADMIN_MOBILE } });
+    if (!user) {
+      user = await prisma.user.create({ data: { mobile: ADMIN_MOBILE, role: 'ADMIN', mobile_verified: true } });
+    } else if (user.role !== 'ADMIN') {
+      user = await prisma.user.update({ where: { id: user.id }, data: { role: 'ADMIN' } });
+    }
+    const admin = await prisma.admin.findUnique({ where: { user_id: user.id } });
+    if (!admin) {
+      await prisma.admin.create({ data: { user_id: user.id, name: 'Administrator', email: ADMIN_EMAIL } });
+    }
+    const accessToken = signAccessToken(user.id, 'ADMIN');
+    const refreshToken = await createRefreshToken(user.id);
+    res.json({ access_token: accessToken, refresh_token: refreshToken, user: { id: user.id, role: 'ADMIN' } });
+  } catch (err) { next(err); }
+});
+
 authRoutes.post('/refresh', validate(RefreshSchema), async (req, res, next) => {
   try {
     const { refresh_token } = req.body;
