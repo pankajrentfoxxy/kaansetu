@@ -1,14 +1,15 @@
 import type { Metadata } from 'next';
+import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'KaamSetu Admin',
-  description: 'KaamSetu Operations Dashboard',
+  title: 'Kaamdhaam Admin',
+  description: 'Kaamdhaam Operations Dashboard',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body style={{ margin: 0, padding: 0 }}>{children}</body>
+      <body>{children}</body>
     </html>
   );
 }

@@ -175,15 +175,40 @@ adminRoutes.get('/workers', async (req, res, next) => {
   try {
     const page = Number(req.query.page ?? 1);
     const limit = 20;
-    const workers = await prisma.worker.findMany({
-      where: { deleted_at: null },
-      include: { user: true, skills: true, verifications: true },
-      orderBy: { created_at: 'desc' },
-      skip: (page - 1) * limit,
-      take: limit,
-    });
-    const total = await prisma.worker.count({ where: { deleted_at: null } });
+    const search = String(req.query.search ?? '').trim();
+    const status = String(req.query.status ?? '').trim();
+    const where: any = { deleted_at: null };
+    if (status) where.kyc_status = status;
+    if (search) {
+      where.OR = [
+        { full_name: { contains: search, mode: 'insensitive' } },
+        { user: { mobile: { contains: search } } },
+      ];
+    }
+    const [workers, total] = await Promise.all([
+      prisma.worker.findMany({
+        where, include: { user: true, skills: true, verifications: true },
+        orderBy: { created_at: 'desc' }, skip: (page - 1) * limit, take: limit,
+      }),
+      prisma.worker.count({ where }),
+    ]);
     res.json({ workers, total, page, pages: Math.ceil(total / limit) });
+  } catch (err) { next(err); }
+});
+
+adminRoutes.get('/workers/:id', async (req, res, next) => {
+  try {
+    const worker = await prisma.worker.findUniqueOrThrow({
+      where: { id: req.params.id },
+      include: {
+        user: true, skills: true, verifications: true, work_history: true, location: true,
+        blocks: { orderBy: { blocked_at: 'desc' } }, point_transactions: { orderBy: { created_at: 'desc' }, take: 10 },
+      },
+    });
+    const referrals = worker.referral_code
+      ? await prisma.worker.count({ where: { referred_by_code: worker.referral_code } })
+      : 0;
+    res.json({ ...worker, referrals_count: referrals });
   } catch (err) { next(err); }
 });
 
@@ -191,15 +216,78 @@ adminRoutes.get('/employers', async (req, res, next) => {
   try {
     const page = Number(req.query.page ?? 1);
     const limit = 20;
-    const employers = await prisma.employer.findMany({
-      where: { deleted_at: null },
-      include: { user: true, verifications: true },
-      orderBy: { created_at: 'desc' },
-      skip: (page - 1) * limit,
-      take: limit,
-    });
-    const total = await prisma.employer.count({ where: { deleted_at: null } });
+    const search = String(req.query.search ?? '').trim();
+    const status = String(req.query.status ?? '').trim();
+    const where: any = { deleted_at: null };
+    if (status) where.kyc_status = status;
+    if (search) {
+      where.OR = [
+        { company_name: { contains: search, mode: 'insensitive' } },
+        { user: { mobile: { contains: search } } },
+      ];
+    }
+    const [employers, total] = await Promise.all([
+      prisma.employer.findMany({
+        where, include: { user: true, verifications: true, _count: { select: { requirements: true, hires: true } } },
+        orderBy: { created_at: 'desc' }, skip: (page - 1) * limit, take: limit,
+      }),
+      prisma.employer.count({ where }),
+    ]);
     res.json({ employers, total, page, pages: Math.ceil(total / limit) });
+  } catch (err) { next(err); }
+});
+
+adminRoutes.get('/employers/:id', async (req, res, next) => {
+  try {
+    const employer = await prisma.employer.findUniqueOrThrow({
+      where: { id: req.params.id },
+      include: {
+        user: true, verifications: true,
+        requirements: { orderBy: { created_at: 'desc' }, take: 20, include: { _count: { select: { matches: true } } } },
+        hires: { orderBy: { created_at: 'desc' }, take: 20, include: { worker: { select: { full_name: true } } } },
+      },
+    });
+    res.json(employer);
+  } catch (err) { next(err); }
+});
+
+adminRoutes.get('/hires', async (req, res, next) => {
+  try {
+    const page = Number(req.query.page ?? 1);
+    const limit = 20;
+    const [hires, total] = await Promise.all([
+      prisma.hire.findMany({
+        include: {
+          worker: { select: { id: true, full_name: true } },
+          employer: { select: { id: true, company_name: true } },
+          requirement: { select: { job_type: true } },
+        },
+        orderBy: { created_at: 'desc' }, skip: (page - 1) * limit, take: limit,
+      }),
+      prisma.hire.count(),
+    ]);
+    res.json({ hires, total, page, pages: Math.ceil(total / limit) });
+  } catch (err) { next(err); }
+});
+
+// Breakdown stats for charts
+adminRoutes.get('/stats', async (_req, res, next) => {
+  try {
+    const [kycGroups, hireGroups, reqGroups, pointsAgg, featured, employersWithUnlocks] = await Promise.all([
+      prisma.worker.groupBy({ by: ['kyc_status'], _count: true, where: { deleted_at: null } }),
+      prisma.hire.groupBy({ by: ['status'], _count: true }),
+      prisma.requirement.groupBy({ by: ['job_type'], _count: true }),
+      prisma.pointTransaction.aggregate({ _sum: { delta: true } }),
+      prisma.requirement.count({ where: { OR: [{ is_featured: true }, { is_urgent: true }] } }),
+      prisma.employer.count({ where: { contact_unlocks: { gt: 0 } } }),
+    ]);
+    res.json({
+      kycStatus: kycGroups.map((g) => ({ label: g.kyc_status, value: g._count })),
+      hireStatus: hireGroups.map((g) => ({ label: g.status, value: g._count })),
+      topJobTypes: reqGroups.map((g) => ({ label: g.job_type, value: g._count })).sort((a, b) => b.value - a.value).slice(0, 6),
+      pointsIssued: pointsAgg._sum.delta ?? 0,
+      promotions: { featured, employersWithUnlocks },
+    });
   } catch (err) { next(err); }
 });
 
