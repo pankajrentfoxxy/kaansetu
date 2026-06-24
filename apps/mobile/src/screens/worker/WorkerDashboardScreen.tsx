@@ -17,6 +17,8 @@ import {
 } from '../../store/api/workerApi';
 import { RootState } from '../../store';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
+import { JobFeedSkeleton } from '../../components/common/Skeleton';
+import { Press } from '../../components/common/Press';
 import { EmptyState } from '../../components/common/EmptyState';
 import { Icon } from '../../components/common/Icon';
 import { JobIcon } from '../../components/common/JobIcon';
@@ -41,6 +43,14 @@ function getInitials(name: string) {
 function formatDate(dateStr: string) {
   try { return new Date(dateStr).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }); }
   catch { return dateStr; }
+}
+
+function timeAgo(dateStr: string, lang: string) {
+  const h = Math.floor((Date.now() - new Date(dateStr).getTime()) / 3.6e6);
+  if (h < 1) return lang === 'en' ? 'just now' : 'अभी';
+  if (h < 24) return lang === 'en' ? `${h}h ago` : `${h} घंटे पहले`;
+  const d = Math.floor(h / 24);
+  return lang === 'en' ? `${d}d ago` : `${d} दिन पहले`;
 }
 
 export function WorkerDashboardScreen({ navigation }: any) {
@@ -298,19 +308,18 @@ export function WorkerDashboardScreen({ navigation }: any) {
                 </TouchableOpacity>
               </View>
             ) : jobsLoading ? (
-              <LoadingSpinner inline />
+              <JobFeedSkeleton />
             ) : jobs.length === 0 ? (
               <EmptyState icon="briefcase-outline" message={tr('noJobs')} subMessage={tr('noJobsSub')} />
             ) : (
               jobs.map((match: any) => {
                 const req = match.requirement ?? {};
-                const isApplied = applied.has(match.id);
+                const isApplied = applied.has(match.id) || !!match.applied_at;
                 return (
-                  <TouchableOpacity
+                  <Press
                     key={match.id}
                     style={[styles.jobCard, isApplied && styles.jobCardApplied]}
                     onPress={() => isOpen ? setSelectedJob(match) : Alert.alert('उपलब्ध नहीं', 'आवेदन करने के लिए उपलब्धता चालू करें।')}
-                    activeOpacity={0.9}
                   >
                     <View style={styles.jobTop}>
                       <JobIcon jobType={req.job_type} size={52} />
@@ -324,6 +333,12 @@ export function WorkerDashboardScreen({ navigation }: any) {
                       </View>
                     </View>
                     <View style={styles.jobTags}>
+                      {req.is_urgent && (
+                        <View style={styles.tagUrgent}>
+                          <Icon name="flame" size={13} color={Colors.dangerText} />
+                          <Text style={styles.tagUrgentText}>{lang === 'en' ? 'Urgent' : 'जल्दी'}</Text>
+                        </View>
+                      )}
                       {req.city && (
                         <View style={styles.tag}>
                           <Icon name="location-outline" size={13} color={Colors.textSecondary} />
@@ -336,6 +351,18 @@ export function WorkerDashboardScreen({ navigation }: any) {
                           <Text style={styles.tagText}>{Number(match.distance_km).toFixed(1)} किमी</Text>
                         </View>
                       )}
+                      {match.applied_count > 0 && (
+                        <View style={styles.tag}>
+                          <Icon name="people-outline" size={13} color={Colors.textSecondary} />
+                          <Text style={styles.tagText}>{match.applied_count} {lang === 'en' ? 'applied' : 'ने आवेदन किया'}</Text>
+                        </View>
+                      )}
+                      {req.created_at && (
+                        <View style={styles.tag}>
+                          <Icon name="time-outline" size={13} color={Colors.textSecondary} />
+                          <Text style={styles.tagText}>{timeAgo(req.created_at, lang)}</Text>
+                        </View>
+                      )}
                       {isApplied && (
                         <View style={styles.tagApplied}>
                           <Icon name="checkmark-circle" size={13} color={Colors.successText} />
@@ -343,7 +370,7 @@ export function WorkerDashboardScreen({ navigation }: any) {
                         </View>
                       )}
                     </View>
-                  </TouchableOpacity>
+                  </Press>
                 );
               })
             )}
@@ -492,11 +519,10 @@ export function WorkerDashboardScreen({ navigation }: any) {
                       <Text style={[styles.modalNoteText, { color: Colors.successText }]}>{tr('alreadyApplied')}</Text>
                     </View>
                   ) : (
-                    <TouchableOpacity
-                      style={[styles.applyBtn, applying && { opacity: 0.7 }]}
+                    <Press
+                      style={styles.applyBtn}
                       onPress={() => handleApply(selectedJob.id)}
                       disabled={applying}
-                      activeOpacity={0.9}
                     >
                       {applying ? <ActivityIndicator color="#fff" /> : (
                         <>
@@ -504,7 +530,7 @@ export function WorkerDashboardScreen({ navigation }: any) {
                           <Icon name="arrow-forward" size={20} color="#fff" />
                         </>
                       )}
-                    </TouchableOpacity>
+                    </Press>
                   )}
                 </>
               );
@@ -599,6 +625,8 @@ const styles = StyleSheet.create({
   jobTags: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   tag: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.surfaceAlt, borderRadius: Radius.sm, paddingHorizontal: 10, paddingVertical: 5 },
   tagText: { ...Typography.caption, color: Colors.textSecondary, fontWeight: '500' },
+  tagUrgent: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.dangerLight, borderRadius: Radius.sm, paddingHorizontal: 10, paddingVertical: 5 },
+  tagUrgentText: { ...Typography.caption, color: Colors.dangerText, fontWeight: '700' },
   tagApplied: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.successLight, borderRadius: Radius.sm, paddingHorizontal: 10, paddingVertical: 5 },
   tagAppliedText: { ...Typography.caption, color: Colors.successText, fontWeight: '700' },
 

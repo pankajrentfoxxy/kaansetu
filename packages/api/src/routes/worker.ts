@@ -345,7 +345,15 @@ workerRoutes.get('/jobs', async (req: AuthRequest, res, next) => {
       orderBy: { match_score: 'desc' },
       take: 50,
     });
-    res.json(matches);
+    // Social proof: how many workers have applied to each of these requirements.
+    const reqIds = [...new Set(matches.map((m) => m.requirement_id))];
+    const counts = await prisma.match.groupBy({
+      by: ['requirement_id'],
+      where: { requirement_id: { in: reqIds }, applied_at: { not: null } },
+      _count: true,
+    });
+    const appliedByReq = Object.fromEntries(counts.map((c) => [c.requirement_id, c._count]));
+    res.json(matches.map((m) => ({ ...m, applied_count: appliedByReq[m.requirement_id] ?? 0 })));
   } catch (err) { next(err); }
 });
 
@@ -357,6 +365,11 @@ workerRoutes.post('/jobs/:matchId/apply', async (req: AuthRequest, res, next) =>
       include: { requirement: { include: { employer: { include: { user: true } } } } },
     });
     if (!match) { res.status(404).json({ error: 'Match not found' }); return; }
+
+    // Persist the application (idempotent — re-applying just keeps the first timestamp).
+    if (!match.applied_at) {
+      await prisma.match.update({ where: { id: match.id }, data: { applied_at: new Date() } });
+    }
 
     // Notify employer via FCM (best-effort)
     try {

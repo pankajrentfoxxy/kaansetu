@@ -369,6 +369,7 @@ model Match {
   score_breakdown Json
   distance_km     Decimal?    @db.Decimal(6, 2)
   created_at      DateTime    @default(now())
+  applied_at      DateTime?
 
   requirement Requirement @relation(fields: [requirement_id], references: [id])
   worker      Worker      @relation(fields: [worker_id], references: [id])
