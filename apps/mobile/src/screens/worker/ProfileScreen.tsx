@@ -61,8 +61,8 @@ export function ProfileScreen({ navigation }: any) {
     const code = referral?.code;
     if (!code) return;
     const msg = lang === 'en'
-      ? `Join Kaamdhaam and find verified jobs! Use my referral code ${code} to sign up. https://kaamdhaam.com`
-      : `Kaamdhaam पर जुड़ें और भरोसेमंद काम पाएँ! मेरा रेफरल कोड ${code} इस्तेमाल करें। https://kaamdhaam.com`;
+      ? `Join KaamDhaam and find verified jobs! Use my referral code ${code} to sign up. https://kaamdhaam.com`
+      : `KaamDhaam पर जुड़ें और भरोसेमंद काम पाएँ! मेरा रेफरल कोड ${code} इस्तेमाल करें। https://kaamdhaam.com`;
     try { await Share.share({ message: msg }); } catch {}
   };
 

@@ -51,7 +51,7 @@ export function EmployerDashboardScreen({ navigation }: any) {
   const verifications: any[] = employer?.verifications ?? [];
   const isVerified = verifications.some((v: any) => v.status === 'VERIFIED');
 
-  const handleLogout = () => Alert.alert('Logout?', 'Logout from Kaamdhaam', [
+  const handleLogout = () => Alert.alert('Logout?', 'Logout from KaamDhaam', [
     { text: 'Cancel', style: 'cancel' },
     {
       text: 'Logout', style: 'destructive', onPress: async () => {

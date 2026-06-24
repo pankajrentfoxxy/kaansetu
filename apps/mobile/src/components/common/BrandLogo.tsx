@@ -20,7 +20,7 @@ export const BrandLogo: React.FC<Props> = ({ size = 64, showWordmark = true, lig
       </View>
       {showWordmark && (
         <>
-          <Text style={[styles.wordmark, light && styles.wordmarkLight]}>Kaamdhaam</Text>
+          <Text style={[styles.wordmark, light && styles.wordmarkLight]}>KaamDhaam</Text>
           <Text style={[styles.tagline, light && styles.taglineLight]}>काम मिले, भरोसे के साथ</Text>
         </>
       )}
