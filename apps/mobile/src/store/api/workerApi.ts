@@ -68,6 +68,11 @@ export const workerApi = baseApi.injectEndpoints({
     }),
     applyJob: builder.mutation<any, string>({
       query: (matchId) => ({ url: `/worker/jobs/${matchId}/apply`, method: 'POST' }),
+      invalidatesTags: ['Matches'],
+    }),
+    getApplications: builder.query<any[], void>({
+      query: () => '/worker/applications',
+      providesTags: ['Matches'],
     }),
     getWorkerOffers: builder.query<any[], void>({
       query: () => '/worker/offers',
@@ -114,6 +119,7 @@ export const {
   useMockPanMutation,
   useMockBgcMutation,
   useApplyJobMutation,
+  useGetApplicationsQuery,
   useGetWorkerOffersQuery,
   useAcceptOfferMutation,
   useRejectOfferMutation,

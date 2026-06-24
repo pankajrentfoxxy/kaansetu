@@ -357,6 +357,29 @@ workerRoutes.get('/jobs', async (req: AuthRequest, res, next) => {
   } catch (err) { next(err); }
 });
 
+// Worker: jobs I've applied to, with derived status (applied → shortlisted → offer → hired)
+workerRoutes.get('/applications', async (req: AuthRequest, res, next) => {
+  try {
+    const worker = await prisma.worker.findUniqueOrThrow({ where: { user_id: req.user!.id } });
+    const matches = await prisma.match.findMany({
+      where: { worker_id: worker.id, applied_at: { not: null } },
+      include: { requirement: { include: { employer: true } } },
+      orderBy: { applied_at: 'desc' },
+    });
+    const reqIds = matches.map((m) => m.requirement_id);
+    const [hires, shortlists] = await Promise.all([
+      prisma.hire.findMany({ where: { worker_id: worker.id, requirement_id: { in: reqIds } } }),
+      prisma.shortlist.findMany({ where: { worker_id: worker.id, requirement_id: { in: reqIds } } }),
+    ]);
+    const hireByReq = Object.fromEntries(hires.map((h) => [h.requirement_id, h.status]));
+    const shortlisted = new Set(shortlists.map((s) => s.requirement_id));
+    res.json(matches.map((m) => ({
+      ...m,
+      application_status: hireByReq[m.requirement_id] ?? (shortlisted.has(m.requirement_id) ? 'SHORTLISTED' : 'APPLIED'),
+    })));
+  } catch (err) { next(err); }
+});
+
 workerRoutes.post('/jobs/:matchId/apply', async (req: AuthRequest, res, next) => {
   try {
     const worker = await prisma.worker.findUniqueOrThrow({ where: { user_id: req.user!.id } });

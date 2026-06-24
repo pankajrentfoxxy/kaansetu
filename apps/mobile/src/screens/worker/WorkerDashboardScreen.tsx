@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView,
+  View, Text, StyleSheet, ScrollView, TextInput,
   RefreshControl, TouchableOpacity, Alert, Modal, ActivityIndicator, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -11,6 +11,7 @@ import {
   useGetJobsQuery,
   useToggleWorkMutation,
   useGetWorkerOffersQuery,
+  useGetApplicationsQuery,
   useAcceptOfferMutation,
   useRejectOfferMutation,
   useGetNotificationsQuery,
@@ -53,6 +54,19 @@ function timeAgo(dateStr: string, lang: string) {
   return lang === 'en' ? `${d}d ago` : `${d} दिन पहले`;
 }
 
+// Application lifecycle → pill label + colors. Anything offer-stage reads as "Offer received".
+function appStatusMeta(status: string, lang: string): { label: string; bg: string; color: string } {
+  const en = lang === 'en';
+  switch (status) {
+    case 'SHORTLISTED': return { label: en ? 'Shortlisted' : 'चुना गया', bg: Colors.accentLight, color: Colors.accentText };
+    case 'ACTIVE': return { label: en ? 'Hired' : 'नौकरी मिली', bg: Colors.successLight, color: Colors.successText };
+    case 'TERMINATED': return { label: en ? 'Closed' : 'बंद', bg: Colors.dangerLight, color: Colors.dangerText };
+    case 'OFFER_SENT': case 'EMPLOYER_SIGNED': case 'WORKER_SIGNED':
+      return { label: en ? 'Offer received' : 'ऑफर मिला', bg: Colors.successLight, color: Colors.successText };
+    default: return { label: en ? 'Applied' : 'आवेदन किया', bg: Colors.primaryLight, color: Colors.primaryText };
+  }
+}
+
 export function WorkerDashboardScreen({ navigation }: any) {
   const dispatch = useDispatch();
   const lang = useSelector((s: RootState) => s.auth.language);
@@ -60,6 +74,7 @@ export function WorkerDashboardScreen({ navigation }: any) {
   const { data: worker, isLoading: profileLoading, refetch } = useGetWorkerProfileQuery();
   const { data: jobs = [], isLoading: jobsLoading, refetch: refetchJobs } = useGetJobsQuery();
   const { data: offers = [], refetch: refetchOffers } = useGetWorkerOffersQuery();
+  const { data: applications = [], isLoading: appsLoading, refetch: refetchApps } = useGetApplicationsQuery();
   const { data: notifications = [], refetch: refetchNotifs } = useGetNotificationsQuery();
   const [toggleWork, { isLoading: toggling }] = useToggleWorkMutation();
   const [acceptOffer] = useAcceptOfferMutation();
@@ -67,8 +82,10 @@ export function WorkerDashboardScreen({ navigation }: any) {
   const [selectedJob, setSelectedJob] = useState<any>(null);
   const [applying, setApplying] = useState(false);
   const [applied, setApplied] = useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = useState<'jobs' | 'offers'>('jobs');
+  const [activeTab, setActiveTab] = useState<'jobs' | 'offers' | 'applied'>('jobs');
   const [notifVisible, setNotifVisible] = useState(false);
+  const [jobSearch, setJobSearch] = useState('');
+  const [jobCategory, setJobCategory] = useState<string | null>(null);
 
   const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://gentle-cooperation-production-ca4c.up.railway.app';
 
@@ -97,6 +114,8 @@ export function WorkerDashboardScreen({ navigation }: any) {
       const newSet = new Set(applied).add(matchId);
       setApplied(newSet);
       await AsyncStorage.setItem(APPLIED_KEY, JSON.stringify([...newSet]));
+      refetchJobs();
+      refetchApps();
       setSelectedJob(null);
       Alert.alert('आवेदन हो गया!', 'आपका आवेदन नियोक्ता को भेज दिया गया है।');
     } catch (e: any) {
@@ -158,6 +177,16 @@ export function WorkerDashboardScreen({ navigation }: any) {
   const pendingOffers = offers.filter((o: any) => o.status === 'OFFER_SENT' || o.status === 'EMPLOYER_SIGNED');
   const primarySkill = worker?.skills?.[0]?.skill_type;
 
+  // Client-side search + role filter over the ≤50 matched jobs (instant, no API round-trip).
+  const jobCategories: string[] = [...new Set(jobs.map((m: any) => m.requirement?.job_type).filter(Boolean))];
+  const q = jobSearch.trim().toLowerCase();
+  const filteredJobs = jobs.filter((m: any) => {
+    const req = m.requirement ?? {};
+    if (jobCategory && req.job_type !== jobCategory) return false;
+    if (!q) return true;
+    return `${jobLabel(req.job_type, lang)} ${req.employer?.company_name ?? ''} ${req.city ?? ''}`.toLowerCase().includes(q);
+  });
+
   const handleLogout = () => Alert.alert('लॉगआउट करें?', 'क्या आप लॉगआउट करना चाहते हैं?', [
     { text: 'रद्द करें', style: 'cancel' },
     {
@@ -175,7 +204,7 @@ export function WorkerDashboardScreen({ navigation }: any) {
       <ScrollView
         contentContainerStyle={styles.scroll}
         refreshControl={
-          <RefreshControl refreshing={false} onRefresh={() => { refetch(); refetchJobs(); refetchOffers(); refetchNotifs(); }} tintColor={Colors.primary} />
+          <RefreshControl refreshing={false} onRefresh={() => { refetch(); refetchJobs(); refetchOffers(); refetchApps(); refetchNotifs(); }} tintColor={Colors.primary} />
         }
         showsVerticalScrollIndicator={false}
       >
@@ -285,6 +314,12 @@ export function WorkerDashboardScreen({ navigation }: any) {
             <Icon name="briefcase" size={18} color={activeTab === 'jobs' ? Colors.primary : Colors.textTertiary} />
             <Text style={[styles.tabText, activeTab === 'jobs' && styles.tabTextActive]}>{tr('tabJobs')}</Text>
           </TouchableOpacity>
+          <TouchableOpacity style={[styles.tab, activeTab === 'applied' && styles.tabActive]} onPress={() => setActiveTab('applied')} activeOpacity={0.8}>
+            <Icon name="checkmark-done" size={18} color={activeTab === 'applied' ? Colors.primary : Colors.textTertiary} />
+            <Text style={[styles.tabText, activeTab === 'applied' && styles.tabTextActive]}>
+              {lang === 'en' ? 'Applied' : 'आवेदित'}{applications.length > 0 ? ` (${applications.length})` : ''}
+            </Text>
+          </TouchableOpacity>
           <TouchableOpacity style={[styles.tab, activeTab === 'offers' && styles.tabActive]} onPress={() => setActiveTab('offers')} activeOpacity={0.8}>
             <Icon name="mail-open" size={18} color={activeTab === 'offers' ? Colors.primary : Colors.textTertiary} />
             <Text style={[styles.tabText, activeTab === 'offers' && styles.tabTextActive]}>
@@ -312,7 +347,41 @@ export function WorkerDashboardScreen({ navigation }: any) {
             ) : jobs.length === 0 ? (
               <EmptyState icon="briefcase-outline" message={tr('noJobs')} subMessage={tr('noJobsSub')} />
             ) : (
-              jobs.map((match: any) => {
+              <>
+                <View style={styles.searchBar}>
+                  <Icon name="search" size={18} color={Colors.textTertiary} />
+                  <TextInput
+                    style={styles.searchInput}
+                    placeholder={lang === 'en' ? 'Search role, company or city' : 'काम, कंपनी या शहर खोजें'}
+                    placeholderTextColor={Colors.textTertiary}
+                    value={jobSearch}
+                    onChangeText={setJobSearch}
+                    returnKeyType="search"
+                  />
+                  {jobSearch.length > 0 && (
+                    <TouchableOpacity onPress={() => setJobSearch('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                      <Icon name="close-circle" size={18} color={Colors.textTertiary} />
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                {jobCategories.length > 1 && (
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsRow} contentContainerStyle={{ gap: 8, paddingRight: Spacing.lg }}>
+                    <TouchableOpacity style={[styles.chip, !jobCategory && styles.chipActive]} onPress={() => setJobCategory(null)} activeOpacity={0.8}>
+                      <Text style={[styles.chipText, !jobCategory && styles.chipTextActive]}>{lang === 'en' ? 'All' : 'सभी'}</Text>
+                    </TouchableOpacity>
+                    {jobCategories.map((cat) => (
+                      <TouchableOpacity key={cat} style={[styles.chip, jobCategory === cat && styles.chipActive]} onPress={() => setJobCategory(jobCategory === cat ? null : cat)} activeOpacity={0.8}>
+                        <Text style={[styles.chipText, jobCategory === cat && styles.chipTextActive]}>{jobLabel(cat, lang)}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                )}
+
+                {filteredJobs.length === 0 ? (
+                  <EmptyState icon="search-outline" message={lang === 'en' ? 'No matching jobs' : 'कोई मेल खाती नौकरी नहीं'} subMessage={lang === 'en' ? 'Try a different search or category.' : 'कोई और खोज या श्रेणी आज़माएँ।'} />
+                ) : (
+                filteredJobs.map((match: any) => {
                 const req = match.requirement ?? {};
                 const isApplied = applied.has(match.id) || !!match.applied_at;
                 return (
@@ -371,6 +440,57 @@ export function WorkerDashboardScreen({ navigation }: any) {
                       )}
                     </View>
                   </Press>
+                );
+              })
+                )}
+              </>
+            )}
+          </>
+        )}
+
+        {/* ── Applied ── */}
+        {activeTab === 'applied' && (
+          <>
+            <Text style={styles.sectionTitle}>{lang === 'en' ? 'My Applications' : 'मेरे आवेदन'}</Text>
+            {appsLoading ? (
+              <JobFeedSkeleton count={3} />
+            ) : applications.length === 0 ? (
+              <EmptyState
+                icon="checkmark-done-outline"
+                message={lang === 'en' ? 'No applications yet' : 'अभी कोई आवेदन नहीं'}
+                subMessage={lang === 'en' ? 'Jobs you apply to will show up here with their status.' : 'जिन नौकरियों के लिए आप आवेदन करेंगे वे यहाँ स्थिति के साथ दिखेंगी।'}
+              />
+            ) : (
+              applications.map((app: any) => {
+                const req = app.requirement ?? {};
+                const meta = appStatusMeta(app.application_status, lang);
+                return (
+                  <View key={app.id} style={styles.jobCard}>
+                    <View style={styles.jobTop}>
+                      <JobIcon jobType={req.job_type} size={52} />
+                      <View style={styles.jobInfo}>
+                        <Text style={styles.jobTitle}>{jobLabel(req.job_type, lang)}</Text>
+                        <Text style={styles.jobCompany} numberOfLines={1}>{req.employer?.company_name ?? 'कंपनी'}</Text>
+                      </View>
+                      <View style={[styles.offerBadge, { backgroundColor: meta.bg }]}>
+                        <Text style={[styles.offerBadgeText, { color: meta.color }]}>{meta.label}</Text>
+                      </View>
+                    </View>
+                    <View style={styles.jobTags}>
+                      {req.city && (
+                        <View style={styles.tag}>
+                          <Icon name="location-outline" size={13} color={Colors.textSecondary} />
+                          <Text style={styles.tagText}>{req.city}</Text>
+                        </View>
+                      )}
+                      {app.applied_at && (
+                        <View style={styles.tag}>
+                          <Icon name="time-outline" size={13} color={Colors.textSecondary} />
+                          <Text style={styles.tagText}>{lang === 'en' ? 'Applied ' : 'आवेदन '}{timeAgo(app.applied_at, lang)}</Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
                 );
               })
             )}
@@ -605,6 +725,14 @@ const styles = StyleSheet.create({
   tabTextActive: { color: Colors.primary },
 
   sectionTitle: { ...Typography.h3, color: Colors.textPrimary, marginBottom: Spacing.md, marginTop: Spacing.xs },
+
+  searchBar: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Colors.surface, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 14, paddingVertical: 2, marginBottom: Spacing.md },
+  searchInput: { flex: 1, ...Typography.body, color: Colors.textPrimary, paddingVertical: 11 },
+  chipsRow: { marginBottom: Spacing.md },
+  chip: { backgroundColor: Colors.surface, borderRadius: Radius.pill, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 14, paddingVertical: 8 },
+  chipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  chipText: { ...Typography.caption, color: Colors.textSecondary, fontWeight: '600' },
+  chipTextActive: { color: '#fff' },
 
   lockedCard: { backgroundColor: Colors.surface, borderRadius: Radius.lg, padding: Spacing.xxl, alignItems: 'center', borderWidth: 1, borderColor: Colors.border },
   lockedIconWrap: { width: 64, height: 64, borderRadius: 32, backgroundColor: Colors.surfaceAlt, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.md },
