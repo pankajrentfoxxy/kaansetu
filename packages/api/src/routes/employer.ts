@@ -93,6 +93,33 @@ employerRoutes.post('/requirements', async (req: AuthRequest, res, next) => {
   } catch (err) { next(err); }
 });
 
+// Global worker search for hiring — browse all verified, open-to-work workers,
+// independent of a posted job. Filters: q (name), skill_type, city, min_experience, verified.
+employerRoutes.get('/workers/search', async (req: AuthRequest, res, next) => {
+  try {
+    const { q, skill_type, city, min_experience, verified, open_to_work } = req.query;
+    const where: any = { deleted_at: null, blocked_at: null };
+    if (open_to_work !== 'false') where.is_open_to_work = true;
+    if (verified === 'true') where.kyc_status = 'FULLY_VERIFIED';
+    if (q) where.full_name = { contains: String(q), mode: 'insensitive' };
+    if (city) where.location = { is: { city: { contains: String(city), mode: 'insensitive' } } };
+    if (skill_type) where.skills = { some: { skill_type: String(skill_type) } };
+
+    const workers = await prisma.worker.findMany({
+      where,
+      include: { skills: true, location: true, verifications: true },
+      orderBy: { created_at: 'desc' },
+      take: 50,
+    });
+
+    const min = min_experience ? Number(min_experience) : 0;
+    const result = min > 0
+      ? workers.filter((w) => Math.max(0, ...w.skills.map((s) => s.experience_years)) >= min)
+      : workers;
+    res.json(result);
+  } catch (err) { next(err); }
+});
+
 employerRoutes.get('/requirements', async (req: AuthRequest, res, next) => {
   try {
     const employer = await getEmployer(req.user!.id);

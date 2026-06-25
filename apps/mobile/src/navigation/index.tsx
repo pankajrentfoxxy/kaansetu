@@ -9,6 +9,7 @@ import { RootState } from '../store';
 import { Colors, Shadows, Typography } from '../theme';
 import { t } from '../utils/i18n';
 import { useGetWorkerProfileQuery } from '../store/api/workerApi';
+import { useGetEmployerProfileQuery } from '../store/api/employerApi';
 
 // Auth Screens
 import { SplashLanguageScreen } from '../screens/worker/SplashLanguageScreen';
@@ -30,6 +31,7 @@ import { EmployerRegistrationScreen } from '../screens/employer/EmployerRegistra
 import { EmployerVerificationScreen } from '../screens/employer/EmployerVerificationScreen';
 import { EmployerDashboardScreen } from '../screens/employer/EmployerDashboardScreen';
 import { PostRequirementScreen } from '../screens/employer/PostRequirementScreen';
+import { FindWorkersScreen } from '../screens/employer/FindWorkersScreen';
 import { MatchedProfilesScreen } from '../screens/employer/MatchedProfilesScreen';
 import { WorkerDetailScreen } from '../screens/employer/WorkerDetailScreen';
 import { CaseAlertScreen } from '../screens/employer/CaseAlertScreen';
@@ -101,6 +103,8 @@ function WorkerTabs() {
 
 function EmployerTabs() {
   const lang = useSelector((s: RootState) => s.auth.language);
+  const { data: employer } = useGetEmployerProfileQuery();
+  const verified = (employer?.verifications ?? []).some((v: any) => v.status === 'VERIFIED');
   return (
     <Tab.Navigator screenOptions={{ headerShown: false, tabBarStyle: TAB_BAR_STYLE, tabBarShowLabel: false }}>
       <Tab.Screen
@@ -113,11 +117,19 @@ function EmployerTabs() {
         component={PostRequirementScreen}
         options={{ tabBarIcon: ({ focused }) => <TabIcon icon="add-circle" label={t('tabPost', lang)} focused={focused} /> }}
       />
-      <Tab.Screen
-        name="Verify"
-        component={EmployerVerificationScreen}
-        options={{ tabBarIcon: ({ focused }) => <TabIcon icon="shield-checkmark" label={t('tabVerify', lang)} focused={focused} /> }}
-      />
+      {verified ? (
+        <Tab.Screen
+          name="FindWorkers"
+          component={FindWorkersScreen}
+          options={{ tabBarIcon: ({ focused }) => <TabIcon icon="people" label={lang === 'en' ? 'Find' : 'खोजें'} focused={focused} /> }}
+        />
+      ) : (
+        <Tab.Screen
+          name="Verify"
+          component={EmployerVerificationScreen}
+          options={{ tabBarIcon: ({ focused }) => <TabIcon icon="shield-checkmark" label={t('tabVerify', lang)} focused={focused} /> }}
+        />
+      )}
     </Tab.Navigator>
   );
 }

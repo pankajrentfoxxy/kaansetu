@@ -26,6 +26,17 @@ export const employerApi = baseApi.injectEndpoints({
       query: (id) => `/employer/requirements/${id}/matches`,
       providesTags: ['Matches'],
     }),
+    searchWorkers: builder.query<any[], { q?: string; skill_type?: string; city?: string; min_experience?: number; verified?: boolean }>({
+      query: (params) => {
+        const sp = new URLSearchParams();
+        if (params.q) sp.set('q', params.q);
+        if (params.skill_type) sp.set('skill_type', params.skill_type);
+        if (params.city) sp.set('city', params.city);
+        if (params.min_experience) sp.set('min_experience', String(params.min_experience));
+        if (params.verified) sp.set('verified', 'true');
+        return `/employer/workers/search?${sp.toString()}`;
+      },
+    }),
     addShortlist: builder.mutation<any, { worker_id: string; requirement_id: string }>({
       query: (body) => ({ url: '/employer/shortlist', method: 'POST', body }),
     }),
@@ -72,6 +83,7 @@ export const {
   usePostRequirementMutation,
   useGetRequirementsQuery,
   useGetRequirementMatchesQuery,
+  useSearchWorkersQuery,
   useAddShortlistMutation,
   useGetShortlistQuery,
   useConfirmHireMutation,
