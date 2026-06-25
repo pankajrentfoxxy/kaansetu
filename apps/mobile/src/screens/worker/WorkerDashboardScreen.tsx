@@ -71,6 +71,7 @@ function appStatusMeta(status: string, lang: string): { label: string; bg: strin
 export function WorkerDashboardScreen({ navigation }: any) {
   const dispatch = useDispatch();
   const lang = useSelector((s: RootState) => s.auth.language);
+  const en = lang === 'en';
   const tr = useT();
   const { data: worker, isLoading: profileLoading, refetch } = useGetWorkerProfileQuery();
   const { data: jobs = [], isLoading: jobsLoading, refetch: refetchJobs } = useGetJobsQuery();
@@ -98,7 +99,7 @@ export function WorkerDashboardScreen({ navigation }: any) {
 
   const handleApply = async (matchId: string) => {
     if (!worker?.is_open_to_work) {
-      Alert.alert('उपलब्ध नहीं', 'आवेदन करने से पहले अपनी उपलब्धता चालू करें।');
+      Alert.alert(en ? 'Not available' : 'उपलब्ध नहीं', en ? 'Turn on your availability before applying.' : 'आवेदन करने से पहले अपनी उपलब्धता चालू करें।');
       return;
     }
     setApplying(true);
@@ -118,9 +119,9 @@ export function WorkerDashboardScreen({ navigation }: any) {
       refetchJobs();
       refetchApps();
       setSelectedJob(null);
-      Alert.alert('आवेदन हो गया!', 'आपका आवेदन नियोक्ता को भेज दिया गया है।');
+      Alert.alert(en ? 'Applied!' : 'आवेदन हो गया!', en ? 'Your application was sent to the employer.' : 'आपका आवेदन नियोक्ता को भेज दिया गया है।');
     } catch (e: any) {
-      Alert.alert('त्रुटि', e?.message ?? 'आवेदन नहीं हो सका। फिर कोशिश करें।');
+      Alert.alert(en ? 'Error' : 'त्रुटि', e?.message ?? (en ? 'Could not apply. Try again.' : 'आवेदन नहीं हो सका। फिर कोशिश करें।'));
     } finally {
       setApplying(false);
     }
@@ -148,29 +149,29 @@ export function WorkerDashboardScreen({ navigation }: any) {
   };
 
   const handleAcceptOffer = (hireId: string) => {
-    Alert.alert('ऑफर स्वीकारें', 'क्या आप यह जॉब ऑफर स्वीकार करते हैं?', [
-      { text: 'रद्द करें', style: 'cancel' },
+    Alert.alert(en ? 'Accept offer' : 'ऑफर स्वीकारें', en ? 'Do you accept this job offer?' : 'क्या आप यह जॉब ऑफर स्वीकार करते हैं?', [
+      { text: en ? 'Cancel' : 'रद्द करें', style: 'cancel' },
       {
-        text: 'स्वीकारें', onPress: async () => {
+        text: en ? 'Accept' : 'स्वीकारें', onPress: async () => {
           try {
             await acceptOffer(hireId).unwrap();
             refetchOffers();
-            Alert.alert('बधाई हो!', 'ऑफर स्वीकार हो गया। नियोक्ता को सूचित कर दिया जाएगा।');
-          } catch (e: any) { Alert.alert('त्रुटि', e?.data?.error ?? 'ऑफर स्वीकार नहीं हो सका।'); }
+            Alert.alert(en ? 'Congratulations!' : 'बधाई हो!', en ? 'Offer accepted. The employer will be notified.' : 'ऑफर स्वीकार हो गया। नियोक्ता को सूचित कर दिया जाएगा।');
+          } catch (e: any) { Alert.alert(en ? 'Error' : 'त्रुटि', e?.data?.error ?? (en ? 'Could not accept the offer.' : 'ऑफर स्वीकार नहीं हो सका।')); }
         },
       },
     ]);
   };
 
   const handleRejectOffer = (hireId: string) => {
-    Alert.alert('ऑफर अस्वीकारें', 'क्या आप यह ऑफर अस्वीकार करना चाहते हैं?', [
-      { text: 'रद्द करें', style: 'cancel' },
+    Alert.alert(en ? 'Decline offer' : 'ऑफर अस्वीकारें', en ? 'Do you want to decline this offer?' : 'क्या आप यह ऑफर अस्वीकार करना चाहते हैं?', [
+      { text: en ? 'Cancel' : 'रद्द करें', style: 'cancel' },
       {
-        text: 'अस्वीकारें', style: 'destructive', onPress: async () => {
+        text: en ? 'Decline' : 'अस्वीकारें', style: 'destructive', onPress: async () => {
           try {
             await rejectOffer(hireId).unwrap();
             refetchOffers();
-          } catch (e: any) { Alert.alert('त्रुटि', e?.data?.error ?? 'ऑफर अस्वीकार नहीं हो सका।'); }
+          } catch (e: any) { Alert.alert(en ? 'Error' : 'त्रुटि', e?.data?.error ?? (en ? 'Could not decline the offer.' : 'ऑफर अस्वीकार नहीं हो सका।')); }
         },
       },
     ]);
@@ -199,10 +200,10 @@ export function WorkerDashboardScreen({ navigation }: any) {
     return `${jobLabel(req.job_type, lang)} ${req.employer?.company_name ?? ''} ${req.city ?? ''}`.toLowerCase().includes(q);
   });
 
-  const handleLogout = () => Alert.alert('लॉगआउट करें?', 'क्या आप लॉगआउट करना चाहते हैं?', [
-    { text: 'रद्द करें', style: 'cancel' },
+  const handleLogout = () => Alert.alert(en ? 'Log out?' : 'लॉगआउट करें?', en ? 'Do you want to log out?' : 'क्या आप लॉगआउट करना चाहते हैं?', [
+    { text: en ? 'Cancel' : 'रद्द करें', style: 'cancel' },
     {
-      text: 'हाँ, निकलें', style: 'destructive', onPress: async () => {
+      text: en ? 'Yes, log out' : 'हाँ, निकलें', style: 'destructive', onPress: async () => {
         await SecureStore.deleteItemAsync('access_token');
         await SecureStore.deleteItemAsync('refresh_token');
         dispatch(baseApi.util.resetApiState());
@@ -387,13 +388,13 @@ export function WorkerDashboardScreen({ navigation }: any) {
                   <Press
                     key={match.id}
                     style={[styles.jobCard, isApplied && styles.jobCardApplied]}
-                    onPress={() => isOpen ? setSelectedJob(match) : Alert.alert('उपलब्ध नहीं', 'आवेदन करने के लिए उपलब्धता चालू करें।')}
+                    onPress={() => isOpen ? setSelectedJob(match) : Alert.alert(en ? 'Not available' : 'उपलब्ध नहीं', en ? 'Turn on your availability to apply.' : 'आवेदन करने के लिए उपलब्धता चालू करें।')}
                   >
                     <View style={styles.jobTop}>
                       <JobIcon jobType={req.job_type} size={52} />
                       <View style={styles.jobInfo}>
                         <Text style={styles.jobTitle}>{jobLabel(req.job_type, lang)}</Text>
-                        <Text style={styles.jobCompany} numberOfLines={1}>{req.employer?.company_name ?? 'कंपनी'}</Text>
+                        <Text style={styles.jobCompany} numberOfLines={1}>{req.employer?.company_name ?? (en ? 'Company' : 'कंपनी')}</Text>
                       </View>
                       <View style={styles.jobSalaryBox}>
                         <Text style={styles.jobSalary}>{salaryRange(req.salary_min, req.salary_max, lang === 'en')}</Text>
@@ -469,7 +470,7 @@ export function WorkerDashboardScreen({ navigation }: any) {
                       <JobIcon jobType={req.job_type} size={52} />
                       <View style={styles.jobInfo}>
                         <Text style={styles.jobTitle}>{jobLabel(req.job_type, lang)}</Text>
-                        <Text style={styles.jobCompany} numberOfLines={1}>{req.employer?.company_name ?? 'कंपनी'}</Text>
+                        <Text style={styles.jobCompany} numberOfLines={1}>{req.employer?.company_name ?? (en ? 'Company' : 'कंपनी')}</Text>
                       </View>
                       <View style={[styles.offerBadge, { backgroundColor: meta.bg }]}>
                         <Text style={[styles.offerBadgeText, { color: meta.color }]}>{meta.label}</Text>
@@ -514,7 +515,7 @@ export function WorkerDashboardScreen({ navigation }: any) {
                       <JobIcon jobType={req.job_type} size={46} />
                       <View style={{ flex: 1, marginLeft: 12 }}>
                         <Text style={styles.offerRole}>{jobLabel(req.job_type, lang)}</Text>
-                        <Text style={styles.offerCompany} numberOfLines={1}>{emp.company_name ?? 'कंपनी'}</Text>
+                        <Text style={styles.offerCompany} numberOfLines={1}>{emp.company_name ?? (en ? 'Company' : 'कंपनी')}</Text>
                       </View>
                       <View style={[styles.offerBadge, isPending ? styles.badgePending : isActive ? styles.badgeActive : styles.badgeRejected]}>
                         <Text style={[styles.offerBadgeText, { color: isPending ? Colors.warningText : isActive ? Colors.successText : Colors.dangerText }]}>
@@ -613,7 +614,7 @@ export function WorkerDashboardScreen({ navigation }: any) {
                     <JobIcon jobType={req.job_type} size={52} />
                     <View style={{ flex: 1, marginLeft: 12 }}>
                       <Text style={styles.modalTitle}>{jobLabel(req.job_type, lang)}</Text>
-                      <Text style={styles.modalCompany} numberOfLines={1}>{req.employer?.company_name ?? 'कंपनी'}</Text>
+                      <Text style={styles.modalCompany} numberOfLines={1}>{req.employer?.company_name ?? (en ? 'Company' : 'कंपनी')}</Text>
                     </View>
                     <TouchableOpacity onPress={() => setSelectedJob(null)} style={styles.closeBtn}>
                       <Icon name="close" size={20} color={Colors.textSecondary} />
