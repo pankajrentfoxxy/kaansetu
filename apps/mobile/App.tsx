@@ -7,6 +7,7 @@ import { SecureStore } from './src/utils/storage';
 import { store } from './src/store';
 import { AppNavigator } from './src/navigation';
 import { setCredentials } from './src/store/authSlice';
+import { tryRefreshSession } from './src/store/api/baseApi';
 
 class ErrorBoundary extends Component<{ children: React.ReactNode }, { error: string | null }> {
   state = { error: null };
@@ -30,10 +31,18 @@ function AppInner() {
   useEffect(() => {
     async function restoreAuth() {
       try {
-        const token = await SecureStore.getItemAsync('access_token');
-        if (!token) return;
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        if (payload.exp * 1000 > Date.now()) {
+        let token = await SecureStore.getItemAsync('access_token');
+        const stillValid = (t: string | null) => {
+          if (!t) return false;
+          try { return JSON.parse(atob(t.split('.')[1])).exp * 1000 > Date.now(); }
+          catch { return false; }
+        };
+        // Access token missing/expired but a refresh token exists → get a fresh one.
+        if (!stillValid(token) && (await tryRefreshSession())) {
+          token = await SecureStore.getItemAsync('access_token');
+        }
+        if (stillValid(token)) {
+          const payload = JSON.parse(atob(token!.split('.')[1]));
           store.dispatch(setCredentials({ userId: payload.sub, role: payload.role }));
         }
       } catch {}

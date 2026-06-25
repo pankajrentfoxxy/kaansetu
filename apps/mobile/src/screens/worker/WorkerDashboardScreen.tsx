@@ -125,6 +125,17 @@ export function WorkerDashboardScreen({ navigation }: any) {
     }
   };
 
+  // Route a tapped notification to the relevant tab. ponytail: routing only;
+  // add read-state when the API returns a `read` flag.
+  const handleNotifPress = (n: any) => {
+    setNotifVisible(false);
+    if (n.type === 'OFFER_LETTER_READY' || n.type === 'OFFER_SENT' || (n.type ?? '').includes('OFFER')) {
+      setActiveTab('offers');
+    } else if (n.type === 'WORKER_SHORTLISTED' || (n.type ?? '').includes('APPLIC')) {
+      setActiveTab('applied');
+    }
+  };
+
   const openOfferLetter = async (hireId: string) => {
     try {
       const token = await SecureStore.getItemAsync('access_token');
@@ -581,7 +592,7 @@ export function WorkerDashboardScreen({ navigation }: any) {
             ) : (
               <ScrollView showsVerticalScrollIndicator={false}>
                 {notifications.map((n: any) => (
-                  <View key={n.id} style={styles.notifRow}>
+                  <TouchableOpacity key={n.id} style={styles.notifRow} onPress={() => handleNotifPress(n)} activeOpacity={0.7}>
                     <View style={styles.notifIcon}>
                       <Icon name={n.type === 'WORKER_SHORTLISTED' ? 'star' : n.type === 'OFFER_LETTER_READY' ? 'mail-open' : 'notifications'} size={18} color={Colors.primary} />
                     </View>
@@ -590,7 +601,8 @@ export function WorkerDashboardScreen({ navigation }: any) {
                       <Text style={styles.notifBody}>{n.body}</Text>
                       <Text style={styles.notifTime}>{formatDate(n.created_at)}</Text>
                     </View>
-                  </View>
+                    <Icon name="chevron-forward" size={18} color={Colors.textTertiary} />
+                  </TouchableOpacity>
                 ))}
                 <View style={{ height: Spacing.lg }} />
               </ScrollView>
