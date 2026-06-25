@@ -34,7 +34,19 @@ export function PostRequirementScreen({ navigation }: any) {
   const [error, setError] = useState('');
   const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [locating, setLocating] = useState(false);
+  const [extraPin, setExtraPin] = useState('');
+  const [extraAreas, setExtraAreas] = useState<{ pincode: string; city: string; latitude?: number; longitude?: number }[]>([]);
   const [postRequirement, { isLoading }] = usePostRequirementMutation();
+
+  // Add another nearby service area (geocoded) so workers near any of them match.
+  const addExtraArea = async (pin: string) => {
+    if (pin.length !== 6 || extraAreas.some((a) => a.pincode === pin)) return;
+    const info = await lookupPincode(pin);
+    let lat: number | undefined; let lng: number | undefined;
+    try { const [r] = await Location.geocodeAsync(`${pin}, India`); if (r) { lat = r.latitude; lng = r.longitude; } } catch {}
+    setExtraAreas((prev) => [...prev, { pincode: pin, city: info?.city ?? '', latitude: lat, longitude: lng }]);
+    setExtraPin('');
+  };
 
   // Capture the job's location so nearby workers can be matched (haversine on the backend).
   const useCurrentLocation = async () => {
@@ -83,6 +95,7 @@ export function PostRequirementScreen({ navigation }: any) {
         pincode: pincode || undefined,
         latitude: panIndia ? undefined : coords?.latitude,
         longitude: panIndia ? undefined : coords?.longitude,
+        service_areas: panIndia || extraAreas.length === 0 ? undefined : extraAreas,
         is_pan_india: panIndia,
         is_live_in_required: liveIn,
         min_experience_years: Number(experience),
@@ -144,6 +157,24 @@ export function PostRequirementScreen({ navigation }: any) {
             <Text style={styles.hint}>
               {coords ? 'Workers near this location will be matched first.' : 'Enter a pincode — we\'ll fill the city and match nearby workers.'}
             </Text>
+
+            <Text style={[styles.sectionTitle, { fontSize: 14 }]}>Other nearby areas <Text style={styles.optional}>· optional</Text></Text>
+            {extraAreas.length > 0 && (
+              <View style={styles.areaChips}>
+                {extraAreas.map((a) => (
+                  <TouchableOpacity key={a.pincode} style={styles.areaChip} onPress={() => setExtraAreas((prev) => prev.filter((x) => x.pincode !== a.pincode))} activeOpacity={0.7}>
+                    <Text style={styles.areaChipText}>{a.city || a.pincode} ({a.pincode})</Text>
+                    <Icon name="close" size={13} color={Colors.primary} />
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+            <View style={styles.row2}>
+              <View style={styles.flex1}><Input label="Add pincode" value={extraPin} onChangeText={(v) => setExtraPin(v.replace(/\D/g, '').slice(0, 6))} placeholder="e.g. 122001" keyboardType="number-pad" maxLength={6} icon="add-circle-outline" /></View>
+              <TouchableOpacity style={styles.addAreaBtn} onPress={() => addExtraArea(extraPin)} disabled={extraPin.length !== 6} activeOpacity={0.85}>
+                <Text style={styles.addAreaBtnText}>Add</Text>
+              </TouchableOpacity>
+            </View>
           </>
         )}
 
@@ -194,6 +225,11 @@ const styles = StyleSheet.create({
   optional: { ...Typography.caption, color: Colors.textTertiary, fontWeight: '500' },
   hint: { ...Typography.caption, color: Colors.textTertiary, marginTop: 4 },
   areaText: { ...Typography.captionStrong, color: Colors.primary, marginTop: 6 },
+  areaChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: Spacing.md },
+  areaChip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: Colors.primaryLight, borderRadius: Radius.pill, paddingHorizontal: 12, paddingVertical: 7 },
+  areaChipText: { ...Typography.caption, color: Colors.primary, fontWeight: '600' },
+  addAreaBtn: { paddingHorizontal: 20, height: 52, borderRadius: Radius.md, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-end', marginBottom: 16 },
+  addAreaBtnText: { color: '#fff', ...Typography.bodyStrong },
   locBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Colors.primaryLight, borderRadius: Radius.md, paddingVertical: 12, marginBottom: Spacing.md },
   locBtnText: { ...Typography.bodyStrong, color: Colors.primary },
   jobGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },

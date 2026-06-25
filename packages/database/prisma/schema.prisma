@@ -335,6 +335,7 @@ model Requirement {
   pincode              String?
   latitude             Decimal?          @db.Decimal(10, 8)
   longitude            Decimal?          @db.Decimal(11, 8)
+  service_areas        Json?             // extra nearby locations: [{ pincode, city, latitude, longitude }]
   is_pan_india         Boolean           @default(false)
   is_live_in_required  Boolean           @default(false)
   min_experience_years Int               @default(0)

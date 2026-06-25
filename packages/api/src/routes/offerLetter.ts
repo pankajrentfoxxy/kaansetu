@@ -28,6 +28,9 @@ offerLetterRoutes.get('/:hireId', authenticate, async (req: AuthRequest, res, ne
       salary: hire.offer_salary,
       startDate: hire.start_date,
       city: hire.employer?.city ?? '',
+      contactName: hire.employer?.contact_name,
+      esignEmployerAt: hire.esign_employer_at,
+      esignWorkerAt: hire.esign_worker_at,
     });
 
     res.setHeader('Content-Type', 'application/pdf');

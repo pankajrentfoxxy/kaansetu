@@ -18,16 +18,24 @@ function scoreJobType(required: string, skills: any[]): number {
 }
 
 function scoreLocation(
-  req: { latitude: any; longitude: any; is_pan_india: boolean },
+  req: { latitude: any; longitude: any; is_pan_india: boolean; service_areas?: any },
   workerLoc: any,
   isPanIndia: boolean,
 ): { score: number; distanceKm: number | null } {
   if (isPanIndia) return { score: 20, distanceKm: null };
-  if (!workerLoc?.latitude || !req.latitude) return { score: 5, distanceKm: null };
-  const km = haversine(
-    Number(req.latitude), Number(req.longitude),
-    Number(workerLoc.latitude), Number(workerLoc.longitude),
-  );
+  if (!workerLoc?.latitude) return { score: 5, distanceKm: null };
+
+  // Distance to the nearest of the primary location + any extra service areas.
+  const points: { lat: number; lng: number }[] = [];
+  if (req.latitude != null) points.push({ lat: Number(req.latitude), lng: Number(req.longitude) });
+  if (Array.isArray(req.service_areas)) {
+    for (const a of req.service_areas) {
+      if (a?.latitude != null) points.push({ lat: Number(a.latitude), lng: Number(a.longitude) });
+    }
+  }
+  if (points.length === 0) return { score: 5, distanceKm: null };
+
+  const km = Math.min(...points.map((p) => haversine(p.lat, p.lng, Number(workerLoc.latitude), Number(workerLoc.longitude))));
   let score = 3;
   if (km <= 5) score = 25;
   else if (km <= 20) score = 18;
