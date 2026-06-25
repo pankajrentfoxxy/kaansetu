@@ -8,6 +8,7 @@ import { useSelector } from 'react-redux';
 import { RootState } from '../store';
 import { Colors, Shadows, Typography } from '../theme';
 import { t } from '../utils/i18n';
+import { useGetWorkerProfileQuery } from '../store/api/workerApi';
 
 // Auth Screens
 import { SplashLanguageScreen } from '../screens/worker/SplashLanguageScreen';
@@ -20,6 +21,7 @@ import { WorkHistoryScreen } from '../screens/worker/WorkHistoryScreen';
 import { LocationPreferencesScreen } from '../screens/worker/LocationPreferencesScreen';
 import { KycVerificationScreen } from '../screens/worker/KycVerificationScreen';
 import { WorkerDashboardScreen } from '../screens/worker/WorkerDashboardScreen';
+import { JobsScreen } from '../screens/worker/JobsScreen';
 import { ProfileScreen } from '../screens/worker/ProfileScreen';
 import { ProfileBlockedScreen } from '../screens/worker/ProfileBlockedScreen';
 
@@ -66,6 +68,8 @@ const TAB_BAR_STYLE = {
 
 function WorkerTabs() {
   const lang = useSelector((s: RootState) => s.auth.language);
+  const { data: worker } = useGetWorkerProfileQuery();
+  const verified = worker?.kyc_status === 'FULLY_VERIFIED';
   return (
     <Tab.Navigator screenOptions={{ headerShown: false, tabBarStyle: TAB_BAR_STYLE, tabBarShowLabel: false }}>
       <Tab.Screen
@@ -73,11 +77,19 @@ function WorkerTabs() {
         component={WorkerDashboardScreen}
         options={{ tabBarIcon: ({ focused }) => <TabIcon icon="home" label={t('tabHome', lang)} focused={focused} /> }}
       />
-      <Tab.Screen
-        name="KYC"
-        component={KycVerificationScreen}
-        options={{ tabBarIcon: ({ focused }) => <TabIcon icon="shield-checkmark" label={t('tabVerify', lang)} focused={focused} /> }}
-      />
+      {verified ? (
+        <Tab.Screen
+          name="Jobs"
+          component={JobsScreen}
+          options={{ tabBarIcon: ({ focused }) => <TabIcon icon="briefcase" label={lang === 'en' ? 'Jobs' : 'नौकरियाँ'} focused={focused} /> }}
+        />
+      ) : (
+        <Tab.Screen
+          name="KYC"
+          component={KycVerificationScreen}
+          options={{ tabBarIcon: ({ focused }) => <TabIcon icon="shield-checkmark" label={t('tabVerify', lang)} focused={focused} /> }}
+        />
+      )}
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}

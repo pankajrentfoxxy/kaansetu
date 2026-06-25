@@ -226,7 +226,15 @@ export function WorkerDashboardScreen({ navigation }: any) {
               <Text style={styles.avatarText}>{getInitials(worker?.full_name ?? '')}</Text>
             </View>
             <View style={styles.heroInfo}>
-              <Text style={styles.heroName} numberOfLines={1}>{worker?.full_name || tr('addYourName')}</Text>
+              <View style={styles.heroNameRow}>
+                <Text style={styles.heroName} numberOfLines={1}>{worker?.full_name || tr('addYourName')}</Text>
+                {kycDone && (
+                  <View style={styles.heroVerified}>
+                    <Icon name="checkmark-circle" size={13} color="#fff" />
+                    <Text style={styles.heroVerifiedText}>{lang === 'en' ? 'Verified' : 'सत्यापित'}</Text>
+                  </View>
+                )}
+              </View>
               <View style={styles.heroLocRow}>
                 <Icon name="location-sharp" size={13} color="rgba(255,255,255,0.85)" />
                 <Text style={styles.heroLocation} numberOfLines={1}>{worker?.location?.city ?? tr('setLocation')}</Text>
@@ -282,28 +290,7 @@ export function WorkerDashboardScreen({ navigation }: any) {
           </TouchableOpacity>
         )}
 
-        {/* ── Verified strip ── */}
-        {kycDone && (
-          <View style={styles.verifiedCard}>
-            <View style={styles.verifiedHead}>
-              <Icon name="checkmark-circle" size={20} color={Colors.success} />
-              <Text style={styles.verifiedTitle}>{tr('fullyVerified')}</Text>
-            </View>
-            <View style={styles.verifiedRow}>
-              {[
-                { type: 'SELFIE', label: lang === 'en' ? 'Selfie' : 'सेल्फी' },
-                { type: 'AADHAAR', label: lang === 'en' ? 'Aadhaar' : 'आधार' },
-                { type: 'PAN', label: lang === 'en' ? 'PAN' : 'पैन' },
-                { type: 'BGC', label: lang === 'en' ? 'Police check' : 'पुलिस जाँच' },
-              ].map((b) => (
-                <View key={b.type} style={styles.verifiedChip}>
-                  <Icon name="checkmark" size={13} color={Colors.successText} />
-                  <Text style={styles.verifiedChipText}>{b.label}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        )}
+        {/* Verified state is now a compact pill in the hero (no full-width card). */}
 
         {/* ── Pending offers alert ── */}
         {pendingOffers.length > 0 && (
@@ -695,7 +682,10 @@ const styles = StyleSheet.create({
   avatar: { width: 52, height: 52, borderRadius: 26, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.4)' },
   avatarText: { color: '#fff', fontSize: 18, fontWeight: '700' },
   heroInfo: { flex: 1, marginLeft: Spacing.md },
-  heroName: { color: '#fff', ...Typography.h3, fontWeight: '700' },
+  heroNameRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  heroName: { color: '#fff', ...Typography.h3, fontWeight: '700', flexShrink: 1 },
+  heroVerified: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: Colors.success, borderRadius: Radius.pill, paddingHorizontal: 8, paddingVertical: 2 },
+  heroVerifiedText: { color: '#fff', ...Typography.tiny, fontWeight: '700' },
   heroLocRow: { flexDirection: 'row', alignItems: 'center', marginTop: 3, gap: 3 },
   heroLocation: { color: 'rgba(255,255,255,0.85)', ...Typography.caption, maxWidth: 110 },
   skillPill: { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: Radius.sm, paddingHorizontal: 8, paddingVertical: 2, marginLeft: 6 },
