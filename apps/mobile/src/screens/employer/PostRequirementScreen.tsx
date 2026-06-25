@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
+import { lookupPincode } from '../../utils/pincode';
 import { usePostRequirementMutation } from '../../store/api/employerApi';
 import { Input } from '../../components/common/Input';
 import { Button } from '../../components/common/Button';
@@ -51,9 +52,16 @@ export function PostRequirementScreen({ navigation }: any) {
     } finally { setLocating(false); }
   };
 
-  // Geocode a 6-digit pincode to coordinates so distance matching works without GPS.
-  const geocodePincode = async (pin: string) => {
-    if (pin.length !== 6) return;
+  const [area, setArea] = useState('');
+
+  // On a full 6-digit pincode: autofill city/area (India Post) + coordinates (geocode).
+  const onPincodeChange = async (pin: string) => {
+    if (pin.length !== 6) { setArea(''); return; }
+    const info = await lookupPincode(pin);
+    if (info) {
+      if (info.city) setCity(info.city);
+      if (info.areas[0]) setArea(info.areas[0]);
+    }
     try {
       const [r] = await Location.geocodeAsync(`${pin}, India`);
       if (r) setCoords({ latitude: r.latitude, longitude: r.longitude });
@@ -130,10 +138,11 @@ export function PostRequirementScreen({ navigation }: any) {
             </TouchableOpacity>
             <View style={styles.row2}>
               <View style={styles.flex1}><Input label="City" value={city} onChangeText={setCity} placeholder="e.g. Delhi" icon="business-outline" /></View>
-              <View style={styles.flex1}><Input label="Pincode" value={pincode} onChangeText={(v) => { const p = v.replace(/\D/g, '').slice(0, 6); setPincode(p); geocodePincode(p); }} placeholder="110001" keyboardType="number-pad" maxLength={6} icon="mail-outline" /></View>
+              <View style={styles.flex1}><Input label="Pincode" value={pincode} onChangeText={(v) => { const p = v.replace(/\D/g, '').slice(0, 6); setPincode(p); onPincodeChange(p); }} placeholder="110001" keyboardType="number-pad" maxLength={6} icon="mail-outline" /></View>
             </View>
+            {area ? <Text style={styles.areaText}>📍 {area}{city ? `, ${city}` : ''}</Text> : null}
             <Text style={styles.hint}>
-              {coords ? 'Workers near this location will be matched first.' : 'Add a pincode or use current location to match nearby workers.'}
+              {coords ? 'Workers near this location will be matched first.' : 'Enter a pincode — we\'ll fill the city and match nearby workers.'}
             </Text>
           </>
         )}
@@ -184,6 +193,7 @@ const styles = StyleSheet.create({
   sectionTitle: { ...Typography.h3, color: Colors.textPrimary, marginTop: Spacing.lg, marginBottom: Spacing.md },
   optional: { ...Typography.caption, color: Colors.textTertiary, fontWeight: '500' },
   hint: { ...Typography.caption, color: Colors.textTertiary, marginTop: 4 },
+  areaText: { ...Typography.captionStrong, color: Colors.primary, marginTop: 6 },
   locBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Colors.primaryLight, borderRadius: Radius.md, paddingVertical: 12, marginBottom: Spacing.md },
   locBtnText: { ...Typography.bodyStrong, color: Colors.primary },
   jobGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },

@@ -38,7 +38,7 @@ export function FindWorkersScreen({ navigation }: any) {
         <SearchBar value={search} onChangeText={setSearch} placeholder="Search by name" />
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsRow} contentContainerStyle={{ gap: 8, paddingHorizontal: Spacing.lg }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsRow} contentContainerStyle={{ gap: 8, paddingHorizontal: Spacing.lg, paddingVertical: 4, alignItems: 'center' }}>
         <TouchableOpacity style={[styles.chip, verifiedOnly && styles.chipActive]} onPress={() => setVerifiedOnly(!verifiedOnly)} activeOpacity={0.8}>
           <Icon name="shield-checkmark" size={13} color={verifiedOnly ? '#fff' : Colors.textSecondary} />
           <Text style={[styles.chipText, verifiedOnly && styles.chipTextActive]}>Verified</Text>
@@ -50,7 +50,7 @@ export function FindWorkersScreen({ navigation }: any) {
         ))}
       </ScrollView>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsRow2} contentContainerStyle={{ gap: 8, paddingHorizontal: Spacing.lg }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsRow2} contentContainerStyle={{ gap: 8, paddingHorizontal: Spacing.lg, paddingVertical: 4, alignItems: 'center' }}>
         <TouchableOpacity style={[styles.skillChip, !skill && styles.chipActive]} onPress={() => setSkill(null)} activeOpacity={0.8}>
           <Text style={[styles.chipText, !skill && styles.chipTextActive]}>All skills</Text>
         </TouchableOpacity>
@@ -106,8 +106,8 @@ const styles = StyleSheet.create({
   h1: { ...Typography.h1, color: Colors.textPrimary },
   sub: { ...Typography.caption, color: Colors.textSecondary, marginTop: 2 },
   searchWrap: { paddingHorizontal: Spacing.lg },
-  chipsRow: { flexGrow: 0, marginBottom: Spacing.sm },
-  chipsRow2: { flexGrow: 0, marginBottom: Spacing.md },
+  chipsRow: { flexGrow: 0, marginTop: Spacing.sm },
+  chipsRow2: { flexGrow: 0, marginTop: Spacing.xs, marginBottom: Spacing.md },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: Colors.surface, borderRadius: Radius.pill, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 14, paddingVertical: 8 },
   skillChip: { backgroundColor: Colors.surface, borderRadius: Radius.pill, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 14, paddingVertical: 8 },
   chipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },

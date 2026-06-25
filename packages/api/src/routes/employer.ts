@@ -287,8 +287,9 @@ employerRoutes.post('/hire', async (req: AuthRequest, res, next) => {
 employerRoutes.get('/hires', async (req: AuthRequest, res, next) => {
   try {
     const employer = await getEmployer(req.user!.id);
+    // Declined offers drop out of the employer's hires pipeline too.
     const hires = await prisma.hire.findMany({
-      where: { employer_id: employer.id },
+      where: { employer_id: employer.id, status: { not: 'TERMINATED' } },
       include: {
         worker: { include: { skills: true, location: true } },
         requirement: true,

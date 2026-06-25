@@ -77,7 +77,7 @@ export function JobsScreen({ navigation }: any) {
       </View>
 
       {categories.length > 1 && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsRow} contentContainerStyle={{ gap: 8, paddingHorizontal: Spacing.lg }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsRow} contentContainerStyle={{ gap: 8, paddingHorizontal: Spacing.lg, paddingVertical: 4, alignItems: 'center' }}>
           <TouchableOpacity style={[styles.chip, !category && styles.chipActive]} onPress={() => setCategory(null)} activeOpacity={0.8}>
             <Text style={[styles.chipText, !category && styles.chipTextActive]}>{en ? 'All' : 'सभी'}</Text>
           </TouchableOpacity>
@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
   filterBtnActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   filterDot: { position: 'absolute', top: -4, right: -4, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
   filterDotText: { color: '#fff', ...Typography.tiny, fontWeight: '800' },
-  chipsRow: { flexGrow: 0, marginBottom: Spacing.sm },
+  chipsRow: { flexGrow: 0, marginBottom: Spacing.xs },
   chip: { backgroundColor: Colors.surface, borderRadius: Radius.pill, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 14, paddingVertical: 8 },
   chipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   chipText: { ...Typography.caption, color: Colors.textSecondary, fontWeight: '600' },

@@ -423,8 +423,9 @@ workerRoutes.post('/jobs/:matchId/apply', async (req: AuthRequest, res, next) =>
 workerRoutes.get('/offers', async (req: AuthRequest, res, next) => {
   try {
     const worker = await prisma.worker.findUniqueOrThrow({ where: { user_id: req.user!.id } });
+    // Declined (TERMINATED) offers drop out of the worker's list.
     const offers = await prisma.hire.findMany({
-      where: { worker_id: worker.id },
+      where: { worker_id: worker.id, status: { not: 'TERMINATED' } },
       include: {
         employer: true,
         requirement: true,
@@ -466,15 +467,36 @@ workerRoutes.put('/offers/:hireId/accept', async (req: AuthRequest, res, next) =
   } catch (err) { next(err); }
 });
 
-// Worker: reject an offer
+// Worker: reject an offer → mark terminated + notify the employer.
 workerRoutes.put('/offers/:hireId/reject', async (req: AuthRequest, res, next) => {
   try {
     const worker = await prisma.worker.findUniqueOrThrow({ where: { user_id: req.user!.id } });
-    await prisma.hire.findFirstOrThrow({ where: { id: req.params.hireId, worker_id: worker.id } });
+    const hire = await prisma.hire.findFirstOrThrow({
+      where: { id: req.params.hireId, worker_id: worker.id },
+      include: { employer: { include: { user: true } }, requirement: true },
+    });
     const updated = await prisma.hire.update({
       where: { id: req.params.hireId },
       data: { status: 'TERMINATED' },
     });
+
+    // Tell the employer their offer was declined (in-app + best-effort FCM).
+    const role = hire.requirement?.job_type?.replace(/_/g, ' ') ?? 'the role';
+    try {
+      await prisma.notification.create({
+        data: {
+          type: 'OFFER_DECLINED',
+          employer_id: hire.employer.id,
+          title: 'Offer declined',
+          body: `${worker.full_name || 'A worker'} declined your offer for ${role}.`,
+          data: { hire_id: hire.id, worker_id: worker.id },
+        },
+      });
+      if (hire.employer.user?.fcm_token) {
+        await fcmService.sendTemplate(hire.employer.user.fcm_token, 'WORKER_NEW_JOB_MATCH', worker.id, true);
+      }
+    } catch { /* notification best-effort */ }
+
     res.json(updated);
   } catch (err) { next(err); }
 });
