@@ -161,6 +161,8 @@ const strings: Record<string, Record<Lang, string>> = {
   yourRole: { hi: 'आपका पद / काम', en: 'Your role / job' },
   fromDate: { hi: 'शुरू तारीख', en: 'From date' },
   toDateHint: { hi: 'अंतिम तारीख (अभी काम कर रहे हैं तो खाली छोड़ें)', en: 'To date (leave blank if current)' },
+  fromYear: { hi: 'किस साल से', en: 'From year' },
+  toYear: { hi: 'किस साल तक (अभी काम कर रहे हैं तो खाली छोड़ें)', en: 'To year (leave blank if current)' },
   refName: { hi: 'संदर्भ व्यक्ति का नाम', en: 'Reference name' },
   refMobile: { hi: 'संदर्भ मोबाइल', en: 'Reference mobile' },
   reasonLeaving: { hi: 'छोड़ने का कारण', en: 'Reason for leaving' },

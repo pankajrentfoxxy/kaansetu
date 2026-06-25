@@ -33,6 +33,12 @@ const emptyEntry = (): HistoryEntry => ({
 function parseDate(raw: string): string | null {
   const cleaned = raw.trim();
   if (!cleaned) return null;
+  // Year-only ("YYYY") → Jan 1 of that year.
+  const yearMatch = cleaned.match(/^(\d{4})$/);
+  if (yearMatch) {
+    const y = parseInt(yearMatch[1], 10);
+    return y >= 1970 && y <= 2030 ? `${y}-01-01` : null;
+  }
   const match = cleaned.match(/^(\d{4})-(\d{1,2})(?:-\d{1,2})?$/);
   if (!match) return null;
   const year = parseInt(match[1], 10);
@@ -62,8 +68,8 @@ export function WorkHistoryScreen({ navigation }: any) {
       const existing: HistoryEntry[] = worker.work_history.map((h: any) => ({
         employer_name: h.employer_name ?? '',
         role: h.role ?? '',
-        from_date: h.from_date ? h.from_date.slice(0, 7) : '',
-        to_date: h.to_date ? h.to_date.slice(0, 7) : '',
+        from_date: h.from_date ? h.from_date.slice(0, 4) : '',
+        to_date: h.to_date ? h.to_date.slice(0, 4) : '',
         reference_name: h.reference_name ?? '',
         reference_mobile: h.reference_mobile ?? '',
         leave_reason: h.leave_reason ?? '',
@@ -89,8 +95,8 @@ export function WorkHistoryScreen({ navigation }: any) {
     for (let i = 0; i < filled.length; i++) {
       const e = filled[i];
       if (!e.role.trim()) { setError(`${tr('employerN')} ${i + 1}: ${tr('yourRole')}`); return; }
-      if (!parseDate(e.from_date)) { setError(`${tr('employerN')} ${i + 1}: ${tr('fromDate')}`); return; }
-      if (e.to_date && !parseDate(e.to_date)) { setError(`${tr('employerN')} ${i + 1}: ${tr('toDateHint')}`); return; }
+      if (!parseDate(e.from_date)) { setError(`${tr('employerN')} ${i + 1}: ${tr('fromYear')}`); return; }
+      if (e.to_date && !parseDate(e.to_date)) { setError(`${tr('employerN')} ${i + 1}: ${tr('toYear')}`); return; }
     }
 
     try {
@@ -131,8 +137,8 @@ export function WorkHistoryScreen({ navigation }: any) {
 
             <Input label={tr('companyEmployerName')} value={entry.employer_name} onChangeText={(v) => update(i, 'employer_name', v)} placeholder="ABC Pvt Ltd" icon="business-outline" />
             <Input label={tr('yourRole')} value={entry.role} onChangeText={(v) => update(i, 'role', v)} placeholder={tr('worker')} icon="briefcase-outline" />
-            <DateScrollPicker label={tr('fromDate')} value={entry.from_date} onChange={(v) => update(i, 'from_date', v)} monthOnly maxYear={new Date().getFullYear()} />
-            <DateScrollPicker label={tr('toDateHint')} value={entry.to_date} onChange={(v) => update(i, 'to_date', v)} monthOnly maxYear={new Date().getFullYear()} />
+            <DateScrollPicker label={tr('fromYear')} value={entry.from_date} onChange={(v) => update(i, 'from_date', v)} yearOnly maxYear={new Date().getFullYear()} />
+            <DateScrollPicker label={tr('toYear')} value={entry.to_date} onChange={(v) => update(i, 'to_date', v)} yearOnly maxYear={new Date().getFullYear()} />
             <Input label={`${tr('refName')} (${tr('optional')})`} value={entry.reference_name} onChangeText={(v) => update(i, 'reference_name', v)} placeholder={tr('refName')} icon="person-outline" />
             <Input label={`${tr('refMobile')} (${tr('optional')})`} value={entry.reference_mobile} onChangeText={(v) => update(i, 'reference_mobile', v)} keyboardType="phone-pad" placeholder="10" maxLength={10} icon="call-outline" />
             <Text style={styles.label}>{tr('reasonLeaving')}</Text>

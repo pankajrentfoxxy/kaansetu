@@ -17,6 +17,8 @@ interface Props {
   maxYear?: number;
   /** If true only show year+month (no day) — for work history */
   monthOnly?: boolean;
+  /** If true only show year (no month/day) — emits "YYYY". For experience. */
+  yearOnly?: boolean;
 }
 
 function range(from: number, to: number) {
@@ -101,7 +103,7 @@ const col = StyleSheet.create({
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
-export function DateScrollPicker({ label, value, onChange, minYear = 1970, maxYear = 2030, monthOnly = false }: Props) {
+export function DateScrollPicker({ label, value, onChange, minYear = 1970, maxYear = 2030, monthOnly = false, yearOnly = false }: Props) {
   const [visible, setVisible] = useState(false);
 
   // Parse current value, clamped to the allowed range. When there is no value we
@@ -128,7 +130,9 @@ export function DateScrollPicker({ label, value, onChange, minYear = 1970, maxYe
     ? `${year}-${String(month).padStart(2, '0')}`
     : value || 'Select date';
 
-  const displayValue = monthOnly
+  const displayValue = yearOnly
+    ? (value ? `${year}` : 'Select year')
+    : monthOnly
     ? (value ? `${MONTHS[month - 1]} ${year}` : 'Select month & year')
     : (value ? `${String(day).padStart(2, '0')} ${MONTHS[month - 1]} ${year}` : 'Select date');
 
@@ -137,7 +141,7 @@ export function DateScrollPicker({ label, value, onChange, minYear = 1970, maxYe
     const safeMonth = clamp(month, 1, 12);
     const mm = String(safeMonth).padStart(2, '0');
     const dd = String(Math.min(day, daysInMonth(safeYear, safeMonth))).padStart(2, '0');
-    onChange(monthOnly ? `${safeYear}-${mm}` : `${safeYear}-${mm}-${dd}`);
+    onChange(yearOnly ? `${safeYear}` : monthOnly ? `${safeYear}-${mm}` : `${safeYear}-${mm}-${dd}`);
     setVisible(false);
   };
 
@@ -167,15 +171,17 @@ export function DateScrollPicker({ label, value, onChange, minYear = 1970, maxYe
             </View>
 
             <View style={styles.columns}>
-              {/* Month */}
-              <Column
-                items={months}
-                selectedIndex={monthIdx}
-                onSelect={(i) => setMonth(months[i])}
-                formatter={(v) => MONTHS[v - 1].slice(0, 3)}
-              />
-              {/* Day (only if not monthOnly) */}
-              {!monthOnly && (
+              {/* Month (hidden in yearOnly) */}
+              {!yearOnly && (
+                <Column
+                  items={months}
+                  selectedIndex={monthIdx}
+                  onSelect={(i) => setMonth(months[i])}
+                  formatter={(v) => MONTHS[v - 1].slice(0, 3)}
+                />
+              )}
+              {/* Day (only full-date mode) */}
+              {!monthOnly && !yearOnly && (
                 <Column
                   items={days}
                   selectedIndex={dayIdx}
