@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as Location from 'expo-location';
 import { usePostRequirementMutation } from '../../store/api/employerApi';
 import { Input } from '../../components/common/Input';
 import { Button } from '../../components/common/Button';
@@ -30,22 +31,50 @@ export function PostRequirementScreen({ navigation }: any) {
   const [panIndia, setPanIndia] = useState(false);
   const [liveIn, setLiveIn] = useState(false);
   const [error, setError] = useState('');
+  const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [locating, setLocating] = useState(false);
   const [postRequirement, { isLoading }] = usePostRequirementMutation();
+
+  // Capture the job's location so nearby workers can be matched (haversine on the backend).
+  const useCurrentLocation = async () => {
+    setLocating(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') { Alert.alert('Permission needed', 'Allow location to find nearby workers.'); return; }
+      const pos = await Location.getCurrentPositionAsync({});
+      setCoords({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
+      const [place] = await Location.reverseGeocodeAsync(pos.coords);
+      if (place?.city) setCity(place.city);
+      if (place?.postalCode) setPincode(place.postalCode);
+    } catch {
+      Alert.alert('Location error', 'Could not get your location. Enter a pincode instead.');
+    } finally { setLocating(false); }
+  };
+
+  // Geocode a 6-digit pincode to coordinates so distance matching works without GPS.
+  const geocodePincode = async (pin: string) => {
+    if (pin.length !== 6) return;
+    try {
+      const [r] = await Location.geocodeAsync(`${pin}, India`);
+      if (r) setCoords({ latitude: r.latitude, longitude: r.longitude });
+    } catch { /* geocode best-effort */ }
+  };
 
   const handlePost = async () => {
     if (!jobType) { setError('Please select a job type'); return; }
-    if (!salaryMin || !salaryMax) { setError('Please enter salary range'); return; }
-    if (Number(salaryMax) < Number(salaryMin)) { setError('Max salary must be ≥ min salary'); return; }
+    if (salaryMin && salaryMax && Number(salaryMax) < Number(salaryMin)) { setError('Max salary must be ≥ min salary'); return; }
     if (!panIndia && !city) { setError('Enter a city or enable Pan India'); return; }
     setError('');
     try {
       const req = await postRequirement({
         job_type: jobType,
         openings: Number(openings) || 1,
-        salary_min: Number(salaryMin),
-        salary_max: Number(salaryMax),
+        salary_min: salaryMin ? Number(salaryMin) : undefined,
+        salary_max: salaryMax ? Number(salaryMax) : undefined,
         city: city || undefined,
         pincode: pincode || undefined,
+        latitude: panIndia ? undefined : coords?.latitude,
+        longitude: panIndia ? undefined : coords?.longitude,
         is_pan_india: panIndia,
         is_live_in_required: liveIn,
         min_experience_years: Number(experience),
@@ -77,11 +106,12 @@ export function PostRequirementScreen({ navigation }: any) {
           })}
         </View>
 
-        <Text style={styles.sectionTitle}>Salary (₹/month)</Text>
+        <Text style={styles.sectionTitle}>Salary (₹/month) <Text style={styles.optional}>· optional</Text></Text>
         <View style={styles.row2}>
           <View style={styles.flex1}><Input label="Minimum" value={salaryMin} onChangeText={setSalaryMin} placeholder="15000" keyboardType="number-pad" icon="cash-outline" /></View>
           <View style={styles.flex1}><Input label="Maximum" value={salaryMax} onChangeText={setSalaryMax} placeholder="25000" keyboardType="number-pad" icon="cash-outline" /></View>
         </View>
+        <Text style={styles.hint}>Leave blank to show "Negotiable".</Text>
 
         <Text style={styles.sectionTitle}>Location</Text>
         <View style={styles.toggleCard}>
@@ -93,10 +123,19 @@ export function PostRequirementScreen({ navigation }: any) {
           <ToggleSwitch value={panIndia} onToggle={() => setPanIndia(!panIndia)} onColor={Colors.primary} />
         </View>
         {!panIndia && (
-          <View style={styles.row2}>
-            <View style={styles.flex1}><Input label="City" value={city} onChangeText={setCity} placeholder="e.g. Delhi" icon="business-outline" /></View>
-            <View style={styles.flex1}><Input label="Pincode" value={pincode} onChangeText={setPincode} placeholder="110001" keyboardType="number-pad" maxLength={6} icon="mail-outline" /></View>
-          </View>
+          <>
+            <TouchableOpacity style={styles.locBtn} onPress={useCurrentLocation} disabled={locating} activeOpacity={0.85}>
+              {locating ? <ActivityIndicator size="small" color={Colors.primary} /> : <Icon name="locate" size={18} color={Colors.primary} />}
+              <Text style={styles.locBtnText}>{coords ? 'Location set ✓ — tap to update' : 'Use current location'}</Text>
+            </TouchableOpacity>
+            <View style={styles.row2}>
+              <View style={styles.flex1}><Input label="City" value={city} onChangeText={setCity} placeholder="e.g. Delhi" icon="business-outline" /></View>
+              <View style={styles.flex1}><Input label="Pincode" value={pincode} onChangeText={(v) => { const p = v.replace(/\D/g, '').slice(0, 6); setPincode(p); geocodePincode(p); }} placeholder="110001" keyboardType="number-pad" maxLength={6} icon="mail-outline" /></View>
+            </View>
+            <Text style={styles.hint}>
+              {coords ? 'Workers near this location will be matched first.' : 'Add a pincode or use current location to match nearby workers.'}
+            </Text>
+          </>
         )}
 
         <Text style={styles.sectionTitle}>Minimum experience</Text>
@@ -143,6 +182,10 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   scroll: { padding: Spacing.lg },
   sectionTitle: { ...Typography.h3, color: Colors.textPrimary, marginTop: Spacing.lg, marginBottom: Spacing.md },
+  optional: { ...Typography.caption, color: Colors.textTertiary, fontWeight: '500' },
+  hint: { ...Typography.caption, color: Colors.textTertiary, marginTop: 4 },
+  locBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Colors.primaryLight, borderRadius: Radius.md, paddingVertical: 12, marginBottom: Spacing.md },
+  locBtnText: { ...Typography.bodyStrong, color: Colors.primary },
   jobGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
   jobTile: { width: '23.5%', backgroundColor: Colors.surface, borderRadius: Radius.md, paddingVertical: 10, paddingHorizontal: 2, alignItems: 'center', borderWidth: 1.5, borderColor: Colors.border, marginBottom: 8 },
   jobTileActive: { borderColor: Colors.primary, backgroundColor: Colors.primaryLight },

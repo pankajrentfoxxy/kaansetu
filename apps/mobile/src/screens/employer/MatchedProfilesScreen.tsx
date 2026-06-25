@@ -5,6 +5,7 @@ import { useGetRequirementMatchesQuery } from '../../store/api/employerApi';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { EmptyState } from '../../components/common/EmptyState';
 import { ScreenHeader } from '../../components/common/ScreenHeader';
+import { SearchBar } from '../../components/common/SearchBar';
 import { Avatar } from '../../components/common/Avatar';
 import { Icon } from '../../components/common/Icon';
 import { Colors, Radius, Shadows, Spacing, Typography, jobLabel } from '../../theme';
@@ -20,11 +21,18 @@ export function MatchedProfilesScreen({ navigation, route }: any) {
   const { requirementId } = route.params ?? {};
   const { data: matches = [], isLoading } = useGetRequirementMatchesQuery(requirementId);
   const [filter, setFilter] = useState('all');
+  const [search, setSearch] = useState('');
 
+  const q = search.trim().toLowerCase();
   const filtered = matches.filter((m: any) => {
-    if (filter === 'nearby') return m.distance_km != null && Number(m.distance_km) <= 20;
-    if (filter === 'verified') return m.worker?.kyc_status === 'FULLY_VERIFIED';
-    if (filter === 'live_in') return m.worker?.is_live_in_ok;
+    if (filter === 'nearby' && !(m.distance_km != null && Number(m.distance_km) <= 20)) return false;
+    if (filter === 'verified' && m.worker?.kyc_status !== 'FULLY_VERIFIED') return false;
+    if (filter === 'live_in' && !m.worker?.is_live_in_ok) return false;
+    if (q) {
+      const w = m.worker ?? {};
+      const hay = `${w.full_name ?? ''} ${w.skills?.map((s: any) => s.skill_type).join(' ') ?? ''} ${w.location?.city ?? ''}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
     return true;
   });
 
@@ -32,7 +40,11 @@ export function MatchedProfilesScreen({ navigation, route }: any) {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <ScreenHeader title="Matched Workers" subtitle={`${matches.length} profiles found`} onBack={() => navigation.goBack()} />
+      <ScreenHeader title="Matched Workers" subtitle={`${filtered.length} of ${matches.length} profiles`} onBack={() => navigation.goBack()} />
+
+      <View style={styles.searchWrap}>
+        <SearchBar value={search} onChangeText={setSearch} placeholder="Search name, skill or city" />
+      </View>
 
       <View style={styles.filterRow}>
         {FILTER_OPTIONS.map((f) => {
@@ -102,7 +114,8 @@ export function MatchedProfilesScreen({ navigation, route }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
-  filterRow: { flexDirection: 'row', gap: 8, paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md },
+  searchWrap: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.md },
+  filterRow: { flexDirection: 'row', gap: 8, paddingHorizontal: Spacing.lg, paddingBottom: Spacing.md },
   filterChip: { borderRadius: Radius.pill, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: Colors.surface, borderWidth: 1.5, borderColor: Colors.border },
   filterChipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   filterChipText: { ...Typography.captionStrong, color: Colors.textSecondary },

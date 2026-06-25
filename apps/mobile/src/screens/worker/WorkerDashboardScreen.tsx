@@ -20,6 +20,7 @@ import { RootState } from '../../store';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { JobFeedSkeleton } from '../../components/common/Skeleton';
 import { Press } from '../../components/common/Press';
+import { salaryRange } from '../../utils/format';
 import { EmptyState } from '../../components/common/EmptyState';
 import { Icon } from '../../components/common/Icon';
 import { JobIcon } from '../../components/common/JobIcon';
@@ -395,8 +396,8 @@ export function WorkerDashboardScreen({ navigation }: any) {
                         <Text style={styles.jobCompany} numberOfLines={1}>{req.employer?.company_name ?? 'कंपनी'}</Text>
                       </View>
                       <View style={styles.jobSalaryBox}>
-                        <Text style={styles.jobSalary}>{formatSalary(req.salary_min ?? 0)}–{formatSalary(req.salary_max ?? 0)}</Text>
-                        <Text style={styles.jobSalaryPer}>{tr('perMonth')}</Text>
+                        <Text style={styles.jobSalary}>{salaryRange(req.salary_min, req.salary_max, lang === 'en')}</Text>
+                        {(req.salary_min != null || req.salary_max != null) && <Text style={styles.jobSalaryPer}>{tr('perMonth')}</Text>}
                       </View>
                     </View>
                     <View style={styles.jobTags}>
@@ -619,7 +620,7 @@ export function WorkerDashboardScreen({ navigation }: any) {
                     </TouchableOpacity>
                   </View>
                   <View style={styles.modalBody}>
-                    <DetailRow icon="cash-outline" label={tr('salary')} value={`${formatSalary(req.salary_min ?? 0)} – ${formatSalary(req.salary_max ?? 0)}/${tr('perMonth')}`} />
+                    <DetailRow icon="cash-outline" label={tr('salary')} value={(req.salary_min != null || req.salary_max != null) ? `${salaryRange(req.salary_min, req.salary_max, lang === 'en')}/${tr('perMonth')}` : salaryRange(req.salary_min, req.salary_max, lang === 'en')} />
                     {req.city && <DetailRow icon="location-outline" label={tr('location')} value={`${req.city}${req.state ? `, ${req.state}` : ''}`} />}
                     {selectedJob.distance_km != null && <DetailRow icon="walk-outline" label={tr('distance')} value={`${Number(selectedJob.distance_km).toFixed(1)} ${lang === 'en' ? 'km' : 'किमी'}`} />}
                     {req.experience_required != null && <DetailRow icon="briefcase-outline" label={tr('experience')} value={`${req.experience_required} ${lang === 'en' ? 'yrs' : 'साल'}`} />}

@@ -328,8 +328,8 @@ model Requirement {
   job_type             String            @db.VarChar(50)
   custom_job_type      String?
   openings             Int               @default(1)
-  salary_min           Int
-  salary_max           Int
+  salary_min           Int?
+  salary_max           Int?
   city                 String?
   state                String?
   pincode              String?
