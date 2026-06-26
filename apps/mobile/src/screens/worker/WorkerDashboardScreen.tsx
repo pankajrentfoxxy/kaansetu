@@ -179,6 +179,7 @@ export function WorkerDashboardScreen({ navigation }: any) {
 
   if (profileLoading) return <LoadingSpinner />;
   if (worker?.kyc_status === 'BLOCKED') { navigation.replace('ProfileBlocked'); return null; }
+  if (!worker?.full_name?.trim()) { navigation.replace('QuickName'); return null; }
 
   const verifications = worker?.verifications ?? [];
   const hasVerified = (type: string) => verifications.some((v: any) => v.check_type === type && v.status === 'VERIFIED');

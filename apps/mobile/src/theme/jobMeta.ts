@@ -45,3 +45,20 @@ export function jobLabel(jobType?: string | null, lang: string = 'hi'): string {
 }
 
 export const JOB_TYPES = Object.keys(JOB_META);
+
+// Employment type (how the worker wants to work) — distinct from is_live_in_ok.
+export const EMPLOYMENT_TYPES = [
+  { value: 'FULL_TIME', labelEn: 'Full-time', labelHi: 'फुल टाइम' },
+  { value: 'PART_TIME', labelEn: 'Part-time', labelHi: 'पार्ट टाइम' },
+  { value: 'LIVE_IN', labelEn: 'Live-in', labelHi: 'लिव-इन' },
+  { value: 'TEMPORARY', labelEn: 'Temporary', labelHi: 'अस्थायी' },
+];
+
+// Expected-salary bands (₹/month). max=null means open-ended ("25k+").
+export const SALARY_BANDS: { min: number; max: number | null; labelEn: string; labelHi: string }[] = [
+  { min: 8000, max: 12000, labelEn: '₹8k – 12k', labelHi: '₹8 हज़ार – 12 हज़ार' },
+  { min: 12000, max: 16000, labelEn: '₹12k – 16k', labelHi: '₹12 हज़ार – 16 हज़ार' },
+  { min: 16000, max: 20000, labelEn: '₹16k – 20k', labelHi: '₹16 हज़ार – 20 हज़ार' },
+  { min: 20000, max: 25000, labelEn: '₹20k – 25k', labelHi: '₹20 हज़ार – 25 हज़ार' },
+  { min: 25000, max: null, labelEn: '₹25k+', labelHi: '₹25 हज़ार+' },
+];

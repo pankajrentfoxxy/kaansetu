@@ -13,7 +13,8 @@ import { useGetEmployerProfileQuery } from '../store/api/employerApi';
 
 // Auth Screens
 import { SplashLanguageScreen } from '../screens/worker/SplashLanguageScreen';
-import { MobileOtpScreen } from '../screens/worker/MobileOtpScreen';
+import { PhoneEntryScreen } from '../screens/worker/PhoneEntryScreen';
+import { OtpVerifyScreen } from '../screens/worker/OtpVerifyScreen';
 
 // Worker Screens
 import { PersonalDetailsScreen } from '../screens/worker/PersonalDetailsScreen';
@@ -24,6 +25,12 @@ import { KycVerificationScreen } from '../screens/worker/KycVerificationScreen';
 import { WorkerDashboardScreen } from '../screens/worker/WorkerDashboardScreen';
 import { JobsScreen } from '../screens/worker/JobsScreen';
 import { ProfileScreen } from '../screens/worker/ProfileScreen';
+import { QuickNameScreen } from '../screens/worker/QuickNameScreen';
+import { QuickJobScreen } from '../screens/worker/QuickJobScreen';
+import { QuickLocationScreen } from '../screens/worker/QuickLocationScreen';
+import { QuickJobTypeScreen } from '../screens/worker/QuickJobTypeScreen';
+import { QuickSalaryScreen } from '../screens/worker/QuickSalaryScreen';
+import { QuickProfileSuccessScreen } from '../screens/worker/QuickProfileSuccessScreen';
 import { ProfileBlockedScreen } from '../screens/worker/ProfileBlockedScreen';
 
 // Employer Screens
@@ -143,12 +150,19 @@ export function AppNavigator() {
         {!isAuthenticated ? (
           <>
             <Stack.Screen name="Splash" component={SplashLanguageScreen} />
-            <Stack.Screen name="OTP" component={MobileOtpScreen} />
+            <Stack.Screen name="PhoneEntry" component={PhoneEntryScreen} />
+            <Stack.Screen name="OtpVerify" component={OtpVerifyScreen} />
             <Stack.Screen name="EmployerRegistration" component={EmployerRegistrationScreen} />
           </>
         ) : role === 'WORKER' ? (
           <>
             <Stack.Screen name="WorkerTabs" component={WorkerTabs} />
+            <Stack.Screen name="QuickName" component={QuickNameScreen} />
+            <Stack.Screen name="QuickJob" component={QuickJobScreen} />
+            <Stack.Screen name="QuickLocation" component={QuickLocationScreen} />
+            <Stack.Screen name="QuickJobType" component={QuickJobTypeScreen} />
+            <Stack.Screen name="QuickSalary" component={QuickSalaryScreen} />
+            <Stack.Screen name="QuickProfileSuccess" component={QuickProfileSuccessScreen} />
             <Stack.Screen name="PersonalDetails" component={PersonalDetailsScreen} />
             <Stack.Screen name="OccupationSkills" component={OccupationSkillsScreen} />
             <Stack.Screen name="WorkHistory" component={WorkHistoryScreen} />

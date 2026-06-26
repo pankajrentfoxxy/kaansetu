@@ -32,6 +32,9 @@ const SkillsSchema = z.object({
     experience_years: z.number().min(0).max(60),
     licence_number: z.string().optional(),
     is_primary: z.boolean(),
+    employment_type: z.enum(['FULL_TIME', 'PART_TIME', 'LIVE_IN', 'TEMPORARY']).nullable().optional(),
+    expected_salary_min: z.number().int().min(0).nullable().optional(),
+    expected_salary_max: z.number().int().min(0).nullable().optional(),
   })),
 });
 

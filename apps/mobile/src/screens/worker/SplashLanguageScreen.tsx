@@ -26,7 +26,7 @@ export function SplashLanguageScreen({ navigation }: any) {
   const handleContinue = async () => {
     await AsyncStorage.setItem('language', selected);
     dispatch(setLanguage(selected));
-    navigation.navigate('OTP');
+    navigation.navigate('PhoneEntry');
   };
 
   return (

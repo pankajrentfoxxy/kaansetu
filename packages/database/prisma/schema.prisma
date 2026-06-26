@@ -133,6 +133,9 @@ model WorkerSkill {
   experience_years Int      @default(0)
   licence_number   String?
   is_primary       Boolean  @default(false)
+  employment_type     String? @db.VarChar(20)  // FULL_TIME | PART_TIME | LIVE_IN | TEMPORARY
+  expected_salary_min Int?
+  expected_salary_max Int?
   created_at       DateTime @default(now())
 
   worker Worker @relation(fields: [worker_id], references: [id])
